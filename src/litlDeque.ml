@@ -27,6 +27,12 @@ module Node = struct
 		  Node2 (b, a) -> f (f z b) a
 		| Node3 (c, b, a) -> f (f (f z c) b) a
   end
+
+  let iter f n = begin 
+    match n with
+      Node2 (a, b) -> f a ; f b
+    | Node3 (a, b, c) -> f a ; f b ; f c
+  end
 end	
 
 module Digit = struct 
@@ -50,6 +56,14 @@ module Digit = struct
 	  | Two (b, a) -> f (f z b) a
 	  | Three (c, b, a) -> f (f (f z c) b) a
 	  | Four (d, c, b, a) -> f (f (f (f z d) c) b) a
+	end
+
+  let iter f n = begin 
+	  match n with
+	    One a -> f a
+	  | Two (a, b) -> f a ; f b
+	  | Three (a, b, c) -> f a ; f b ; f c
+	  | Four (a, b, c, d) -> f a ; f b ; f c ; f d
 	end
 
   let from_node n = begin 
@@ -89,6 +103,16 @@ let rec fold_left : 'a 'b . ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a = begin
 	    Digit.fold_left f (
 		    fold_left (Node.fold_left f) (Digit.fold_left f z pr) m
 		) sf
+end
+
+let rec iter : 'a . ('a -> unit) -> 'a t -> unit = begin 
+  fun f t -> match t with
+    Empty -> ()
+  | Single x -> f x ;
+  | Deep (pr, m, sf) ->
+      Digit.iter f pr ;
+      iter (fun n -> Node.iter f n) m ;
+      Digit.iter f sf
 end
 
 let rec consl : 'a . 'a -> 'a t -> 'a t = begin 
@@ -161,7 +185,6 @@ and deepr : 'a . 'a Digit.t -> ('a Node.t) t -> 'a t = begin
         None -> Digit.fold_left consr Empty pr
       | Some (a, m') -> Deep (pr, m', Digit.from_node a)
 end
-
 
 let nodes d1 m d2 = begin 
 	match d1, m, d2 with

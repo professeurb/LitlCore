@@ -10,9 +10,4 @@ Plugins:     META (0.2)
 Library "litlCore"
   Path:       src
   BuildTools: ocamlbuild
-  Modules:    LitlBinaryTree, LitlBinaryTreeMap, LitlEnum
-  InternalModules: LitlExpander, LitlExpanderAux,
-    LitlGenerator, LitlMapper, LitlMapperAux, LitlMapperOpt,
-    LitlMapperOptAux, LitlMemo, LitlTreeEnum, LitlTreeMapEnum,
-    LitlTreeMapKeyEnum, LitlTreeMapValueEnum
-  
+  Modules:    LitlBinaryTree, LitlBinaryTreeMap, LitlEnum, LitlDeque

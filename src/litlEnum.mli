@@ -1,10 +1,4 @@
-(************************************************************************
-*  litlEnum.mli
-*  
-*
-*  Created by Olivier Brunet on 27 May 2011.
-*  Copyright (c) 2011 B.W.C. Computing. All rights reserved.
-************************************************************************)
+type 'a enum
 
 class type ['a] enumerator = object ('enum)
 	method next : ('a * 'enum) option
@@ -14,34 +8,36 @@ class type ['a] enumerator = object ('enum)
 	method memoized : bool
 end
 
-type 'a t
+val empty : 'a enum
+val from_list : 'a list -> 'a enum
+val from_generator : ('a -> ('a * 'b) option) -> 'a -> 'b enum
+val from_unit_generator : (unit -> 'a option) -> 'a enum
+val from_enumerator : 'a enumerator -> 'a enum
+val from_binary_tree : 'a LitlBinaryTree.t -> 'a enum
+val from_binary_tree_map : ('a, 'b) LitlBinaryTreeMap.t -> ('a * 'b) enum
+val from_binary_tree_map_keys : ('a, 'b) LitlBinaryTreeMap.t -> 'a enum
+val from_binary_tree_map_values : ('a, 'b) LitlBinaryTreeMap.t -> 'b enum
+val from_stream : 'a Stream.t -> 'a enum
+val from_once : (unit -> ('a * 'a enum) option) -> 'a enum
+val cons : 'a -> 'a enum -> 'a enum
 
-val empty : 'a t
+val next : 'a enum -> ('a * 'a enum) option
+val fold : ('a -> 'b -> 'b) -> 'a enum -> 'b -> 'b
+val iter : ('a -> unit) -> 'a enum -> unit
+val skip_until : ('a -> bool) -> 'a enum -> ('a * 'a enum) option
 
-val from_list : 'a list -> 'a t
-val from_generator : ('a -> ('a * 'b) option) -> 'a -> 'b t
-val from_unit_generator : (unit -> 'a option) -> 'a t
-val from_enumerator : 'a enumerator -> 'a t
-val from_binary_tree : 'a LitlBinaryTree.t -> 'a t
-val from_binary_tree_map : ('a, 'b) LitlBinaryTreeMap.t -> ('a * 'b) t
-val from_binary_tree_map_keys : ('a, 'b) LitlBinaryTreeMap.t -> 'a t
-val from_binary_tree_map_values : ('a, 'b) LitlBinaryTreeMap.t -> 'b t
-val from_stream : 'a Stream.t -> 'a t
-val from_once : (unit -> ('a * 'a t) option) -> 'a t
-val cons : 'a -> 'a t -> 'a t
-
-val next : 'a t -> ('a * 'a t) option
-val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
-val iter : ('a -> unit) -> 'a t -> unit
-val skip_until : ('a -> bool) -> 'a t -> ('a * 'a t) option
-
-val map : ('a -> 'b) -> 'a t -> 'b t
-val map_with_aux : ('a -> 'c -> ('b * 'c) option) -> 'a t -> 'c -> 'b t
-val map_opt : ('a -> 'b option) -> 'a t -> 'b t
+val map : ('a -> 'b) -> 'a enum -> 'b enum
+val map_with_aux : ('a -> 'b -> ('c * 'b) option) -> 'a enum -> 'b -> 'c enum
+val map_opt : ('a -> 'b option) -> 'a enum -> 'b enum
 val map_opt_with_aux :
-	('a -> 'b -> ('c option * 'b) option) -> 'a t -> 'b -> 'c t
-val filter : ('a -> bool) -> 'a t -> 'a t
-val concat : 'a t -> 'a t -> 'a t
-val expand : ('a -> 'b t) -> 'a t -> 'b t
-val expand_with_aux : ('a -> 'c -> ('b t * 'c)) -> 'a t -> 'c -> 'b t
-val memo : 'a t -> 'a t
+	('a -> 'b -> ('c option * 'b) option) -> 'a enum -> 'b -> 'c enum
+val filter : ('a -> bool) -> 'a enum -> 'a enum
+val concat : 'a enum -> 'a enum -> 'a enum
+val expand : ('a -> 'b enum) -> 'a enum -> 'b enum
+val expand_with_aux : ('a -> 'c -> 'b enum * 'c) -> 'a enum -> 'c -> 'b enum
+val memo : 'a enum -> 'a enum
+
+val range : int -> int -> int enum
+val counter : int enum
+val trim : int -> 'a enum -> 'a enum
+val to_list : 'a enum -> 'a list
