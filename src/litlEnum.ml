@@ -444,7 +444,7 @@ module rec Enum : sig
 	val from_list : 'a list -> 'a t
 	val from_generator : ('a -> ('a * 'b) option) -> 'a -> 'b t
 	val from_unit_generator : (unit -> 'a option) -> 'a t
-	val from_enumerator : 'a enumerator -> 'a t
+	val from_object : 'a enumerator -> 'a t
 	val from_binary_tree : 'a BT.t -> 'a t
 	val from_binary_tree_map : ('a, 'b) BTM.t -> ('a * 'b) t
 	val from_binary_tree_map_keys : ('a, 'b) BTM.t -> 'a t
@@ -495,7 +495,7 @@ end
 
 	let from_generator f state = Gen (Generator.make f state)
 
-	let from_enumerator e = Obj e
+	let from_object e = Obj e
 
 	let from_binary_tree t = BT (TreeEnumerator.make t)
 

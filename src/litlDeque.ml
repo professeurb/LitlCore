@@ -77,6 +77,15 @@ type 'a digit = 'a Digit.t
 type 'a node = 'a Node.t
 type 'a t = Empty | Single of 'a | Deep of 'a digit * 'a node t * 'a digit
 
+(*
+type 'a node = Node2 of 'a * 'a | Node3 of 'a * 'a * 'a
+type 'a digit =
+  One of 'a
+| Two of 'a * 'a
+| Three of 'a * 'a * 'a
+| Four of 'a * 'a * 'a * 'a
+*)
+
 let empty = Empty
 
 let is_empty t = begin 
@@ -165,160 +174,512 @@ and deepl : 'a . ('a Node.t) t -> 'a Digit.t -> 'a t = begin
       | Some (a, m') -> Deep (Digit.from_node a, m', sf)
 end
 
-let rec nextr : 'a . 'a t -> ('a * 'a t) option = begin 
+let rec nextr : 'a . 'a t -> ('a t * 'a) option = begin 
   fun ft ->
 	  match ft with
 	    Empty -> None
-	  | Single x -> Some (x, Empty)
+	  | Single x -> Some (Empty, x)
 	  | Deep (pr, m, Digit.One a) ->
-		    Some (a, deepr pr m)
+		    Some (deepr pr m, a)
 	  | Deep (pr, m, Digit.Two (b, a)) ->
-		    Some (a, Deep (pr, m, (Digit.One b)))
+		    Some (Deep (pr, m, (Digit.One b)), a)
 	  | Deep (pr, m, Digit.Three (c, b, a)) ->
-		    Some (a, Deep (pr, m,Digit.Two (c, b)))
+		    Some (Deep (pr, m,Digit.Two (c, b)), a)
 	  | Deep (pr, m, Digit.Four (d, c, b, a)) ->
-		    Some (a, Deep (pr, m, Digit.Three (d, c, b)))
+		    Some (Deep (pr, m, Digit.Three (d, c, b)), a)
 end
 and deepr : 'a . 'a Digit.t -> ('a Node.t) t -> 'a t = begin 
 	fun pr m ->  
 	  match nextr m with
         None -> Digit.fold_left consr Empty pr
-      | Some (a, m') -> Deep (pr, m', Digit.from_node a)
+      | Some (m', a) -> Deep (pr, m', Digit.from_node a)
 end
 
-let nodes d1 m d2 = begin 
-	match d1, m, d2 with
-	Digit.One a, Digit.One b, Digit.One c ->
-	    Digit.One (Node.Node3 (a, b, c))
-	| Digit.One a, Digit.One b, Digit.Two (c, d) ->
-	    Digit.Two (Node.Node2 (a, b), Node.Node2 (c, d))
-	| Digit.One a, Digit.One b, Digit.Three (c, d, e) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-	| Digit.One a, Digit.One b, Digit.Four (c, d, e, f) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.One a, Digit.Two (b, c), Digit.One d ->
-	    Digit.Two (Node.Node2 (a, b), Node.Node2 (c, d))
-	| Digit.One a, Digit.Two (b, c), Digit.Two (d, e) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-	| Digit.One a, Digit.Two (b, c), Digit.Three (d, e, f) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.One a, Digit.Two (b, c), Digit.Four (d, e, f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.One a, Digit.Three (b, c, d), Digit.One e ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-	| Digit.One a, Digit.Three (b, c, d), Digit.Two (e, f) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.One a, Digit.Three (b, c, d), Digit.Three (e, f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.One a, Digit.Three (b, c, d), Digit.Four (e, f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.One a, Digit.Four (b, c, d, e), Digit.One f ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.One a, Digit.Four (b, c, d, e), Digit.Two (f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.One a, Digit.Four (b, c, d, e), Digit.Three (f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.One a, Digit.Four (b, c, d, e), Digit.Four (f, g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Two (a, b), Digit.One c, Digit.One d ->
-	    Digit.Two (Node.Node2 (a, b), Node.Node2 (c, d))
-	| Digit.Two (a, b), Digit.One c, Digit.Two (d, e) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-	| Digit.Two (a, b), Digit.One c, Digit.Three (d, e, f) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.Two (a, b), Digit.One c, Digit.Four (d, e, f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Two (a, b), Digit.Two (c, d), Digit.One e ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-	| Digit.Two (a, b), Digit.Two (c, d), Digit.Two (e, f) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.Two (a, b), Digit.Two (c, d), Digit.Three (e, f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Two (a, b), Digit.Two (c, d), Digit.Four (e, f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Two (a, b), Digit.Three (c, d, e), Digit.One f ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.Two (a, b), Digit.Three (c, d, e), Digit.Two (f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Two (a, b), Digit.Three (c, d, e), Digit.Three (f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Two (a, b), Digit.Three (c, d, e), Digit.Four (f, g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Two (a, b), Digit.Four (c, d, e, f), Digit.One g ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Two (a, b), Digit.Four (c, d, e, f), Digit.Two (g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Two (a, b), Digit.Four (c, d, e, f), Digit.Three (g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Two (a, b), Digit.Four (c, d, e, f), Digit.Four (g, h, i, j) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h), Node.Node2 (i, j))
-	| Digit.Three (a, b, c), Digit.One d, Digit.One e ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-	| Digit.Three (a, b, c), Digit.One d, Digit.Two (e, f) ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.Three (a, b, c), Digit.One d, Digit.Three (e, f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Three (a, b, c), Digit.One d, Digit.Four (e, f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Three (a, b, c), Digit.Two (d, e), Digit.One f ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.Three (a, b, c), Digit.Two (d, e), Digit.Two (f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Three (a, b, c), Digit.Two (d, e), Digit.Three (f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Three (a, b, c), Digit.Two (d, e), Digit.Four (f, g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Three (a, b, c), Digit.Three (d, e, f), Digit.One g ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Three (a, b, c), Digit.Three (d, e, f), Digit.Two (g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Three (a, b, c), Digit.Three (d, e, f), Digit.Three (g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Three (a, b, c), Digit.Three (d, e, f), Digit.Four (g, h, i, j) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h), Node.Node2 (i, j))
-	| Digit.Three (a, b, c), Digit.Four (d, e, f, g), Digit.One h ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Three (a, b, c), Digit.Four (d, e, f, g), Digit.Two (h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Three (a, b, c), Digit.Four (d, e, f, g), Digit.Three (h, i, j) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h), Node.Node2 (i, j))
-	| Digit.Three (a, b, c), Digit.Four (d, e, f, g), Digit.Four (h, i, j, k) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i), Node.Node2 (j, k))
-	| Digit.Four (a, b, c, d), Digit.One e, Digit.One f ->
-	    Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-	| Digit.Four (a, b, c, d), Digit.One e, Digit.Two (f, g) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Four (a, b, c, d), Digit.One e, Digit.Three (f, g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Four (a, b, c, d), Digit.One e, Digit.Four (f, g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Four (a, b, c, d), Digit.Two (e, f), Digit.One g ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-	| Digit.Four (a, b, c, d), Digit.Two (e, f), Digit.Two (g, h) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Four (a, b, c, d), Digit.Two (e, f), Digit.Three (g, h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Four (a, b, c, d), Digit.Two (e, f), Digit.Four (g, h, i, j) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h), Node.Node2 (i, j))
-	| Digit.Four (a, b, c, d), Digit.Three (e, f, g), Digit.One h ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-	| Digit.Four (a, b, c, d), Digit.Three (e, f, g), Digit.Two (h, i) ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Four (a, b, c, d), Digit.Three (e, f, g), Digit.Three (h, i, j) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h), Node.Node2 (i, j))
-	| Digit.Four (a, b, c, d), Digit.Three (e, f, g), Digit.Four (h, i, j, k) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i), Node.Node2 (j, k))
-	| Digit.Four (a, b, c, d), Digit.Four (e, f, g, h), Digit.One i ->
-	    Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i))
-	| Digit.Four (a, b, c, d), Digit.Four (e, f, g, h), Digit.Two (i, j) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h), Node.Node2 (i, j))
-	| Digit.Four (a, b, c, d), Digit.Four (e, f, g, h), Digit.Three (i, j, k) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i), Node.Node2 (j, k))
-	| Digit.Four (a, b, c, d), Digit.Four (e, f, g, h), Digit.Four (i, j, k, l) ->
-	    Digit.Four (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node3 (g, h, i), Node.Node3 (j, k, l))
+(* For automatically generating function "nodes"
+
+let rec nodes = function
+  [a; b] -> ["Node2 ("^a^", "^b^")"]
+| [a; b; c] -> ["Node3 ("^a^", "^b^", "^c^")"]
+| [a; b; c; d] -> ["Node2 ("^a^", "^b^")"; "Node2 ("^c^", "^d^")"]
+| a :: b :: c :: l -> ("Node3 ("^a^", "^b^", "^c^")") :: (nodes l)
+| _ -> assert false
+;;
+
+let digits l =
+	match nodes l with
+	[a] -> "One ("^a^")"
+| [a; b] -> "Two ("^a^", "^b^")"
+| [a; b; c] -> "Three ("^a^", "^b^", "^c^")"
+| [a; b; c; d] -> "Four ("^a^", "^b^", "^c^", "^d^")"
+| _ -> assert false ;;
+
+let letters = 
+  [| "a"; "b"; "c"; "d"; "e"; "f"; "g"; "h"; "i"; "j"; "k"; "l" |] ;;
+
+let make_sequence n =
+	let rec aux n l =
+		if n = 0 then l else aux (n-1) (letters.(n-1) :: l)
+  in
+  aux n []
+
+let string_of_digit a l =
+	match l with
+	  1 -> "One " ^ letters.(a - 1)
+  | 2 -> "Two (" ^ letters.(a - 1) ^ ", " ^ letters.(a) ^ ")"
+  | 3 -> "Three (" ^ letters.(a - 1) ^ ", " ^
+      letters.(a) ^ ", " ^ letters.(a + 1) ^ ")"
+  | _ -> "Four (" ^ letters.(a - 1) ^ ", " ^
+      letters.(a) ^ ", " ^ letters.(a + 1) ^ ", " ^ letters.(a + 2) ^ ")"
+;;
+
+let write_nodes_3 () = begin 
+  Printf.(
+  let rec aux depth header vars = begin 
+    if depth = 4 then begin
+      printf "\n%s%s\n" header (digits (make_sequence (vars - 1)))
+    end
+    else begin
+      printf "\n%sbegin \n" header;
+      printf "%s  match d%d with\n" header depth ;
+      for i = 1 to 4 do
+        printf "%s  | %s ->" header (string_of_digit vars i) ;
+        aux (depth + 1) (header^"  ") (vars + i)
+      done ;
+      printf "%send\n" header
+    end
+  end in
+  printf "let nodes_3 d1 d2 d3 =" ;
+  aux 1 "" 1 
+  )
 end
 
-let nodes' d1 d2 = begin 
+let write_nodes_2 () = begin 
+  Printf.(
+  let rec aux depth header vars = begin 
+    if depth = 3 then begin
+      printf "\n%s%s\n" header (digits (make_sequence (vars - 1)))
+    end
+    else begin
+      printf "\n%sbegin \n" header;
+      printf "%s  match d%d with\n" header depth ;
+      for i = 1 to 4 do
+        printf "%s  | %s ->" header (string_of_digit vars i) ;
+        aux (depth + 1) (header^"  ") (vars + i)
+      done ;
+      printf "%send\n" header
+    end
+  end in
+  printf "let nodes_2 d1 d2 =" ;
+  aux 1 "" 1 
+  )
+end
+*)
+
+let nodes_3 d1 d2 d3 =
+Digit.(
+	Node.(
+    match d1 with
+    | One a ->
+    begin 
+      match d2 with
+      | One b ->
+      begin 
+        match d3 with
+        | One c ->
+        One (Node3 (a, b, c))
+        | Two (c, d) ->
+        Two (Node2 (a, b), Node2 (c, d))
+        | Three (c, d, e) ->
+        Two (Node3 (a, b, c), Node2 (d, e))
+        | Four (c, d, e, f) ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+      end
+      | Two (b, c) ->
+      begin 
+        match d3 with
+        | One d ->
+        Two (Node2 (a, b), Node2 (c, d))
+        | Two (d, e) ->
+        Two (Node3 (a, b, c), Node2 (d, e))
+        | Three (d, e, f) ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Four (d, e, f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+      end
+      | Three (b, c, d) ->
+      begin 
+        match d3 with
+        | One e ->
+        Two (Node3 (a, b, c), Node2 (d, e))
+        | Two (e, f) ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Three (e, f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Four (e, f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+      end
+      | Four (b, c, d, e) ->
+      begin 
+        match d3 with
+        | One f ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Two (f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Three (f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Four (f, g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+      end
+    end
+    | Two (a, b) ->
+    begin 
+      match d2 with
+      | One c ->
+      begin 
+        match d3 with
+        | One d ->
+        Two (Node2 (a, b), Node2 (c, d))
+        | Two (d, e) ->
+        Two (Node3 (a, b, c), Node2 (d, e))
+        | Three (d, e, f) ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Four (d, e, f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+      end
+      | Two (c, d) ->
+      begin 
+        match d3 with
+        | One e ->
+        Two (Node3 (a, b, c), Node2 (d, e))
+        | Two (e, f) ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Three (e, f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Four (e, f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+      end
+      | Three (c, d, e) ->
+      begin 
+        match d3 with
+        | One f ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Two (f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Three (f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Four (f, g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+      end
+      | Four (c, d, e, f) ->
+      begin 
+        match d3 with
+        | One g ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Two (g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Three (g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | Four (g, h, i, j) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+      end
+    end
+    | Three (a, b, c) ->
+    begin 
+      match d2 with
+      | One d ->
+      begin 
+        match d3 with
+        | One e ->
+        Two (Node3 (a, b, c), Node2 (d, e))
+        | Two (e, f) ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Three (e, f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Four (e, f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+      end
+      | Two (d, e) ->
+      begin 
+        match d3 with
+        | One f ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Two (f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Three (f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Four (f, g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+      end
+      | Three (d, e, f) ->
+      begin 
+        match d3 with
+        | One g ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Two (g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Three (g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | Four (g, h, i, j) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+      end
+      | Four (d, e, f, g) ->
+      begin 
+        match d3 with
+        | One h ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Two (h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | Three (h, i, j) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+        | Four (h, i, j, k) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+      end
+    end
+    | Four (a, b, c, d) ->
+    begin 
+      match d2 with
+      | One e ->
+      begin 
+        match d3 with
+        | One f ->
+        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | Two (f, g) ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Three (f, g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Four (f, g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+      end
+      | Two (e, f) ->
+      begin 
+        match d3 with
+        | One g ->
+        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | Two (g, h) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Three (g, h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | Four (g, h, i, j) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+      end
+      | Three (e, f, g) ->
+      begin 
+        match d3 with
+        | One h ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | Two (h, i) ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | Three (h, i, j) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+        | Four (h, i, j, k) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+      end
+      | Four (e, f, g, h) ->
+      begin 
+        match d3 with
+        | One i ->
+        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | Two (i, j) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+        | Three (i, j, k) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+        | Four (i, j, k, l) ->
+        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node3 (j, k, l))
+      end
+    end
+  )
+)
+
+(* let nodes d1 m d2 = begin 
+	Node.( Digit.(
+		match d1, m, d2 with
+	One a, One b, One c ->
+	    One (Node3 (a, b, c))
+	| One a, One b, Two (c, d) ->
+	    Two (Node2 (a, b), Node2 (c, d))
+	| One a, One b, Three (c, d, e) ->
+	    Two (Node3 (a, b, c), Node2 (d, e))
+	| One a, One b, Four (c, d, e, f) ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| One a, Two (b, c), One d ->
+	    Two (Node2 (a, b), Node2 (c, d))
+	| One a, Two (b, c), Two (d, e) ->
+	    Two (Node3 (a, b, c), Node2 (d, e))
+	| One a, Two (b, c), Three (d, e, f) ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| One a, Two (b, c), Four (d, e, f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| One a, Three (b, c, d), One e ->
+	    Two (Node3 (a, b, c), Node2 (d, e))
+	| One a, Three (b, c, d), Two (e, f) ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| One a, Three (b, c, d), Three (e, f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| One a, Three (b, c, d), Four (e, f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| One a, Four (b, c, d, e), One f ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| One a, Four (b, c, d, e), Two (f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| One a, Four (b, c, d, e), Three (f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| One a, Four (b, c, d, e), Four (f, g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Two (a, b), One c, One d ->
+	    Two (Node2 (a, b), Node2 (c, d))
+	| Two (a, b), One c, Two (d, e) ->
+	    Two (Node3 (a, b, c), Node2 (d, e))
+	| Two (a, b), One c, Three (d, e, f) ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| Two (a, b), One c, Four (d, e, f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Two (a, b), Two (c, d), One e ->
+	    Two (Node3 (a, b, c), Node2 (d, e))
+	| Two (a, b), Two (c, d), Two (e, f) ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| Two (a, b), Two (c, d), Three (e, f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Two (a, b), Two (c, d), Four (e, f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Two (a, b), Three (c, d, e), One f ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| Two (a, b), Three (c, d, e), Two (f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Two (a, b), Three (c, d, e), Three (f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Two (a, b), Three (c, d, e), Four (f, g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Two (a, b), Four (c, d, e, f), One g ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Two (a, b), Four (c, d, e, f), Two (g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Two (a, b), Four (c, d, e, f), Three (g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Two (a, b), Four (c, d, e, f), Four (g, h, i, j) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+	| Three (a, b, c), One d, One e ->
+	    Two (Node3 (a, b, c), Node2 (d, e))
+	| Three (a, b, c), One d, Two (e, f) ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| Three (a, b, c), One d, Three (e, f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Three (a, b, c), One d, Four (e, f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Three (a, b, c), Two (d, e), One f ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| Three (a, b, c), Two (d, e), Two (f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Three (a, b, c), Two (d, e), Three (f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Three (a, b, c), Two (d, e), Four (f, g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Three (a, b, c), Three (d, e, f), One g ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Three (a, b, c), Three (d, e, f), Two (g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Three (a, b, c), Three (d, e, f), Three (g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Three (a, b, c), Three (d, e, f), Four (g, h, i, j) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+	| Three (a, b, c), Four (d, e, f, g), One h ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Three (a, b, c), Four (d, e, f, g), Two (h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Three (a, b, c), Four (d, e, f, g), Three (h, i, j) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+	| Three (a, b, c), Four (d, e, f, g), Four (h, i, j, k) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+	| Four (a, b, c, d), One e, One f ->
+	    Two (Node3 (a, b, c), Node3 (d, e, f))
+	| Four (a, b, c, d), One e, Two (f, g) ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Four (a, b, c, d), One e, Three (f, g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Four (a, b, c, d), One e, Four (f, g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Four (a, b, c, d), Two (e, f), One g ->
+	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+	| Four (a, b, c, d), Two (e, f), Two (g, h) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Four (a, b, c, d), Two (e, f), Three (g, h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Four (a, b, c, d), Two (e, f), Four (g, h, i, j) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+	| Four (a, b, c, d), Three (e, f, g), One h ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+	| Four (a, b, c, d), Three (e, f, g), Two (h, i) ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Four (a, b, c, d), Three (e, f, g), Three (h, i, j) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+	| Four (a, b, c, d), Three (e, f, g), Four (h, i, j, k) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+	| Four (a, b, c, d), Four (e, f, g, h), One i ->
+	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+	| Four (a, b, c, d), Four (e, f, g, h), Two (i, j) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+	| Four (a, b, c, d), Four (e, f, g, h), Three (i, j, k) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+	| Four (a, b, c, d), Four (e, f, g, h), Four (i, j, k, l) ->
+	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node3 (j, k, l))
+  ) )
+end *)
+
+let nodes_2 d1 d2 =
+Digit.(
+	Node.(
+    match d1 with
+    | One a ->
+    begin 
+      match d2 with
+      | One b ->
+      One (Node2 (a, b))
+      | Two (b, c) ->
+      One (Node3 (a, b, c))
+      | Three (b, c, d) ->
+      Two (Node2 (a, b), Node2 (c, d))
+      | Four (b, c, d, e) ->
+      Two (Node3 (a, b, c), Node2 (d, e))
+    end
+    | Two (a, b) ->
+    begin 
+      match d2 with
+      | One c ->
+      One (Node3 (a, b, c))
+      | Two (c, d) ->
+      Two (Node2 (a, b), Node2 (c, d))
+      | Three (c, d, e) ->
+      Two (Node3 (a, b, c), Node2 (d, e))
+      | Four (c, d, e, f) ->
+      Two (Node3 (a, b, c), Node3 (d, e, f))
+    end
+    | Three (a, b, c) ->
+    begin 
+      match d2 with
+      | One d ->
+      Two (Node2 (a, b), Node2 (c, d))
+      | Two (d, e) ->
+      Two (Node3 (a, b, c), Node2 (d, e))
+      | Three (d, e, f) ->
+      Two (Node3 (a, b, c), Node3 (d, e, f))
+      | Four (d, e, f, g) ->
+      Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+    end
+    | Four (a, b, c, d) ->
+    begin 
+      match d2 with
+      | One e ->
+      Two (Node3 (a, b, c), Node2 (d, e))
+      | Two (e, f) ->
+      Two (Node3 (a, b, c), Node3 (d, e, f))
+      | Three (e, f, g) ->
+      Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+      | Four (e, f, g, h) ->
+      Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+    end
+  )
+)
+
+(* let nodes' d1 d2 = begin 
   match d1, d2 with 
     Digit.One a, Digit.One b ->
       Digit.One (Node.Node2 (a, b))
@@ -352,9 +713,9 @@ let nodes' d1 d2 = begin
       Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
   | Digit.Four (a, b, c, d), Digit.Four (e, f, g, h) ->
       Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-end
+end *)
 
-let rec app3 : 'a . 'a t -> 'a Digit.t -> 'a t -> 'a t = 
+let rec pre_concat : 'a . 'a t -> 'a Digit.t -> 'a t -> 'a t = 
 fun xs ts ys -> begin 
   match xs with
     Empty -> Digit.fold_right consl ts ys
@@ -364,7 +725,7 @@ fun xs ts ys -> begin
         Empty -> Digit.fold_left consr xs ts
       | Single y -> consr (Digit.fold_left consr xs ts) y
       | Deep (pr2, m2, sf2) ->
-	       let m' = app3 m1 (nodes sf1 ts pr2) m2 in
+	       let m' = pre_concat m1 (nodes_3 sf1 ts pr2) m2 in
 	       Deep (pr1, m', sf2)
 	end
 end
@@ -378,7 +739,7 @@ let concat xs ys = begin
         Empty -> xs
       | Single y -> consr xs y
       | Deep (pr2, m2, sf2) ->
-	       let m' = app3 m1 (nodes' sf1 pr2) m2 in
+	       let m' = pre_concat m1 (nodes_2 sf1 pr2) m2 in
 	       Deep (pr1, m', sf2)
 	end
 end

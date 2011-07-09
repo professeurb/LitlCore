@@ -12,7 +12,7 @@ val empty : 'a enum
 val from_list : 'a list -> 'a enum
 val from_generator : ('a -> ('a * 'b) option) -> 'a -> 'b enum
 val from_unit_generator : (unit -> 'a option) -> 'a enum
-val from_enumerator : 'a enumerator -> 'a enum
+val from_object : 'a enumerator -> 'a enum
 val from_binary_tree : 'a LitlBinaryTree.t -> 'a enum
 val from_binary_tree_map : ('a, 'b) LitlBinaryTreeMap.t -> ('a * 'b) enum
 val from_binary_tree_map_keys : ('a, 'b) LitlBinaryTreeMap.t -> 'a enum
