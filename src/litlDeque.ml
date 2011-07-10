@@ -10,6 +10,8 @@
 
 module List = struct 
   include List
+
+  let empty = []
   let cons a b = a :: b
 end
 
@@ -76,15 +78,6 @@ end
 type 'a digit = 'a Digit.t
 type 'a node = 'a Node.t
 type 'a t = Empty | Single of 'a | Deep of 'a digit * 'a node t * 'a digit
-
-(*
-type 'a node = Node2 of 'a * 'a | Node3 of 'a * 'a * 'a
-type 'a digit =
-  One of 'a
-| Two of 'a * 'a
-| Three of 'a * 'a * 'a
-| Four of 'a * 'a * 'a * 'a
-*)
 
 let empty = Empty
 
