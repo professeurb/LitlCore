@@ -129,6 +129,14 @@ module Digit = struct
       Node.Node2 (a, am, b, bm) -> Two (a, am, b, bm)
     | Node.Node3 (a, am, b, bm, c, cm) -> Three (a, am, b, bm, c, cm)
   end
+
+  let m n = begin 
+    match n with
+      One (_, am) -> am
+    | Two (_, am, _, bm) -> am @@ bm
+    | Three (_, am, _, bm, _, cm) -> am @@ bm @@ cm
+    | Four (_, am, _, bm, _, cm, _, dm) -> am @@ bm @@ cm @@ dm
+  end
 end
 
 type 'a digit = 'a Digit.t
@@ -336,19 +344,22 @@ let nl n =
   in aux n []
 ;;
 
-let ft = from_list (nl 20) ;;
+let ft = from_list (nl 10) ;;
 let Some (ft, v) = next_right ft ;;
 let Some (v, ft) = next ft ;;
 
+let ft1 = from_list (nl 10) ;;
+let ft2 = from_list (nl 7) ;;
+let ft = concat ft1 ft2 ;;
 *)
 
 (* For automatically generating function "nodes"
 
 let rec nodes = function
-  [a; b] -> ["Node2 ("^a^", "^b^")"]
-| [a; b; c] -> ["Node3 ("^a^", "^b^", "^c^")"]
-| [a; b; c; d] -> ["Node2 ("^a^", "^b^")"; "Node2 ("^c^", "^d^")"]
-| a :: b :: c :: l -> ("Node3 ("^a^", "^b^", "^c^")") :: (nodes l)
+  [a; b] -> ["Node2 ("^a^", "^a^"m, "^b^", "^b^"m)"]
+| [a; b; c] -> ["Node3 ("^a^", "^a^"m, "^b^", "^b^"m, "^c^", "^c^"m)"]
+| [a; b; c; d] -> ["Node2 ("^a^", "^a^"m, "^b^", "^b^"m)"; "Node2 ("^c^", "^c^"m, "^d^", "^d^"m)"]
+| a :: b :: c :: l -> ("Node3 ("^a^", "^a^"m, "^b^", "^b^"m, "^c^", "^c^"m)") :: (nodes l)
 | _ -> assert false
 ;;
 
@@ -420,473 +431,317 @@ let write_nodes_2 () = begin
   aux 1 "" 1 
   )
 end
+
+For the FingerTree version, we then apply some regular expressions :
+"\| One ([^\(])" => "| One ($1, $1m)"
+"\| Two \(([^\(]), (.)\)" => "| Two ($1, $1m, $2, $2m)"
+"\| Three \(([^\(]), (.), (.)\)" => "| Three ($1, $1m, $2, $2m, $3, $3m)"
+"\| Four \(([^\(]), (.), (.), (.)\)"
+    => "| Four ($1, $1m, $2, $2m, $3, $3m, $4, $4m)"
+"Node2 \((.), (.)\)" => "Node2 ($1, $1m, $2, $2m), $1m @@ $2m"
+"Node3 \((.), (.), (.)\)"
+    => "Node3 ($1, $1m, $2, $2m, $3, $3m), $1m @@ $2m @@ $3m"
 *)
 
 let nodes_3 d1 d2 d3 =
 Digit.(
 	Node.(
     match d1 with
-    | One a ->
+    | One (a, am) ->
     begin 
       match d2 with
-      | One b ->
+      | One (b, bm) ->
       begin 
         match d3 with
-        | One c ->
-        One (Node3 (a, b, c))
-        | Two (c, d) ->
-        Two (Node2 (a, b), Node2 (c, d))
-        | Three (c, d, e) ->
-        Two (Node3 (a, b, c), Node2 (d, e))
-        | Four (c, d, e, f) ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
+        | One (c, cm) ->
+        One (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm)
+        | Two (c, cm, d, dm) ->
+        Two (Node2 (a, am, b, bm), am @@ bm, Node2 (c, cm, d, dm), cm @@ dm)
+        | Three (c, cm, d, dm, e, em) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+        | Four (c, cm, d, dm, e, em, f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
       end
-      | Two (b, c) ->
+      | Two (b, bm, c, cm) ->
       begin 
         match d3 with
-        | One d ->
-        Two (Node2 (a, b), Node2 (c, d))
-        | Two (d, e) ->
-        Two (Node3 (a, b, c), Node2 (d, e))
-        | Three (d, e, f) ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Four (d, e, f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | One (d, dm) ->
+        Two (Node2 (a, am, b, bm), am @@ bm, Node2 (c, cm, d, dm), cm @@ dm)
+        | Two (d, dm, e, em) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+        | Three (d, dm, e, em, f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Four (d, dm, e, em, f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
       end
-      | Three (b, c, d) ->
+      | Three (b, bm, c, cm, d, dm) ->
       begin 
         match d3 with
-        | One e ->
-        Two (Node3 (a, b, c), Node2 (d, e))
-        | Two (e, f) ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Three (e, f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Four (e, f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | One (e, em) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+        | Two (e, em, f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Three (e, em, f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Four (e, em, f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
       end
-      | Four (b, c, d, e) ->
+      | Four (b, bm, c, cm, d, dm, e, em) ->
       begin 
         match d3 with
-        | One f ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Two (f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Three (f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Four (f, g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | One (f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Two (f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Three (f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Four (f, fm, g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
       end
     end
-    | Two (a, b) ->
+    | Two (a, am, b, bm) ->
     begin 
       match d2 with
-      | One c ->
+      | One (c, cm) ->
       begin 
         match d3 with
-        | One d ->
-        Two (Node2 (a, b), Node2 (c, d))
-        | Two (d, e) ->
-        Two (Node3 (a, b, c), Node2 (d, e))
-        | Three (d, e, f) ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Four (d, e, f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+        | One (d, dm) ->
+        Two (Node2 (a, am, b, bm), am @@ bm, Node2 (c, cm, d, dm), cm @@ dm)
+        | Two (d, dm, e, em) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+        | Three (d, dm, e, em, f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Four (d, dm, e, em, f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
       end
-      | Two (c, d) ->
+      | Two (c, cm, d, dm) ->
       begin 
         match d3 with
-        | One e ->
-        Two (Node3 (a, b, c), Node2 (d, e))
-        | Two (e, f) ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Three (e, f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Four (e, f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | One (e, em) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+        | Two (e, em, f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Three (e, em, f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Four (e, em, f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
       end
-      | Three (c, d, e) ->
+      | Three (c, cm, d, dm, e, em) ->
       begin 
         match d3 with
-        | One f ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Two (f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Three (f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Four (f, g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | One (f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Two (f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Three (f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Four (f, fm, g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
       end
-      | Four (c, d, e, f) ->
+      | Four (c, cm, d, dm, e, em, f, fm) ->
       begin 
         match d3 with
-        | One g ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Two (g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Three (g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-        | Four (g, h, i, j) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+        | One (g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Two (g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Three (g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
+        | Four (g, gm, h, hm, i, im, j, jm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm, Node2 (i, im, j, jm), im @@ jm)
       end
     end
-    | Three (a, b, c) ->
+    | Three (a, am, b, bm, c, cm) ->
     begin 
       match d2 with
-      | One d ->
+      | One (d, dm) ->
       begin 
         match d3 with
-        | One e ->
-        Two (Node3 (a, b, c), Node2 (d, e))
-        | Two (e, f) ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Three (e, f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Four (e, f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+        | One (e, em) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+        | Two (e, em, f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Three (e, em, f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Four (e, em, f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
       end
-      | Two (d, e) ->
+      | Two (d, dm, e, em) ->
       begin 
         match d3 with
-        | One f ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Two (f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Three (f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Four (f, g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | One (f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Two (f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Three (f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Four (f, fm, g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
       end
-      | Three (d, e, f) ->
+      | Three (d, dm, e, em, f, fm) ->
       begin 
         match d3 with
-        | One g ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Two (g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Three (g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-        | Four (g, h, i, j) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+        | One (g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Two (g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Three (g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
+        | Four (g, gm, h, hm, i, im, j, jm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm, Node2 (i, im, j, jm), im @@ jm)
       end
-      | Four (d, e, f, g) ->
+      | Four (d, dm, e, em, f, fm, g, gm) ->
       begin 
         match d3 with
-        | One h ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Two (h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-        | Three (h, i, j) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-        | Four (h, i, j, k) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+        | One (h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Two (h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
+        | Three (h, hm, i, im, j, jm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm, Node2 (i, im, j, jm), im @@ jm)
+        | Four (h, hm, i, im, j, jm, k, km) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im, Node2 (j, jm, k, km), jm @@ km)
       end
     end
-    | Four (a, b, c, d) ->
+    | Four (a, am, b, bm, c, cm, d, dm) ->
     begin 
       match d2 with
-      | One e ->
+      | One (e, em) ->
       begin 
         match d3 with
-        | One f ->
-        Two (Node3 (a, b, c), Node3 (d, e, f))
-        | Two (f, g) ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Three (f, g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Four (f, g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
+        | One (f, fm) ->
+        Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+        | Two (f, fm, g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Three (f, fm, g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Four (f, fm, g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
       end
-      | Two (e, f) ->
+      | Two (e, em, f, fm) ->
       begin 
         match d3 with
-        | One g ->
-        Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-        | Two (g, h) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Three (g, h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-        | Four (g, h, i, j) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
+        | One (g, gm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+        | Two (g, gm, h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Three (g, gm, h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
+        | Four (g, gm, h, hm, i, im, j, jm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm, Node2 (i, im, j, jm), im @@ jm)
       end
-      | Three (e, f, g) ->
+      | Three (e, em, f, fm, g, gm) ->
       begin 
         match d3 with
-        | One h ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-        | Two (h, i) ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-        | Three (h, i, j) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-        | Four (h, i, j, k) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
+        | One (h, hm) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
+        | Two (h, hm, i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
+        | Three (h, hm, i, im, j, jm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm, Node2 (i, im, j, jm), im @@ jm)
+        | Four (h, hm, i, im, j, jm, k, km) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im, Node2 (j, jm, k, km), jm @@ km)
       end
-      | Four (e, f, g, h) ->
+      | Four (e, em, f, fm, g, gm, h, hm) ->
       begin 
         match d3 with
-        | One i ->
-        Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-        | Two (i, j) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-        | Three (i, j, k) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
-        | Four (i, j, k, l) ->
-        Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node3 (j, k, l))
+        | One (i, im) ->
+        Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im)
+        | Two (i, im, j, jm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm, Node2 (i, im, j, jm), im @@ jm)
+        | Three (i, im, j, jm, k, km) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im, Node2 (j, jm, k, km), jm @@ km)
+        | Four (i, im, j, jm, k, km, l, lm) ->
+        Four (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node3 (g, gm, h, hm, i, im), gm @@ hm @@ im, Node3 (j, jm, k, km, l, lm), jm @@ km @@ lm)
       end
     end
   )
 )
-
-(* let nodes d1 m d2 = begin 
-	Node.( Digit.(
-		match d1, m, d2 with
-	One a, One b, One c ->
-	    One (Node3 (a, b, c))
-	| One a, One b, Two (c, d) ->
-	    Two (Node2 (a, b), Node2 (c, d))
-	| One a, One b, Three (c, d, e) ->
-	    Two (Node3 (a, b, c), Node2 (d, e))
-	| One a, One b, Four (c, d, e, f) ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| One a, Two (b, c), One d ->
-	    Two (Node2 (a, b), Node2 (c, d))
-	| One a, Two (b, c), Two (d, e) ->
-	    Two (Node3 (a, b, c), Node2 (d, e))
-	| One a, Two (b, c), Three (d, e, f) ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| One a, Two (b, c), Four (d, e, f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| One a, Three (b, c, d), One e ->
-	    Two (Node3 (a, b, c), Node2 (d, e))
-	| One a, Three (b, c, d), Two (e, f) ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| One a, Three (b, c, d), Three (e, f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| One a, Three (b, c, d), Four (e, f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| One a, Four (b, c, d, e), One f ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| One a, Four (b, c, d, e), Two (f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| One a, Four (b, c, d, e), Three (f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| One a, Four (b, c, d, e), Four (f, g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Two (a, b), One c, One d ->
-	    Two (Node2 (a, b), Node2 (c, d))
-	| Two (a, b), One c, Two (d, e) ->
-	    Two (Node3 (a, b, c), Node2 (d, e))
-	| Two (a, b), One c, Three (d, e, f) ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| Two (a, b), One c, Four (d, e, f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Two (a, b), Two (c, d), One e ->
-	    Two (Node3 (a, b, c), Node2 (d, e))
-	| Two (a, b), Two (c, d), Two (e, f) ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| Two (a, b), Two (c, d), Three (e, f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Two (a, b), Two (c, d), Four (e, f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Two (a, b), Three (c, d, e), One f ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| Two (a, b), Three (c, d, e), Two (f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Two (a, b), Three (c, d, e), Three (f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Two (a, b), Three (c, d, e), Four (f, g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Two (a, b), Four (c, d, e, f), One g ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Two (a, b), Four (c, d, e, f), Two (g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Two (a, b), Four (c, d, e, f), Three (g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Two (a, b), Four (c, d, e, f), Four (g, h, i, j) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-	| Three (a, b, c), One d, One e ->
-	    Two (Node3 (a, b, c), Node2 (d, e))
-	| Three (a, b, c), One d, Two (e, f) ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| Three (a, b, c), One d, Three (e, f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Three (a, b, c), One d, Four (e, f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Three (a, b, c), Two (d, e), One f ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| Three (a, b, c), Two (d, e), Two (f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Three (a, b, c), Two (d, e), Three (f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Three (a, b, c), Two (d, e), Four (f, g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Three (a, b, c), Three (d, e, f), One g ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Three (a, b, c), Three (d, e, f), Two (g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Three (a, b, c), Three (d, e, f), Three (g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Three (a, b, c), Three (d, e, f), Four (g, h, i, j) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-	| Three (a, b, c), Four (d, e, f, g), One h ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Three (a, b, c), Four (d, e, f, g), Two (h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Three (a, b, c), Four (d, e, f, g), Three (h, i, j) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-	| Three (a, b, c), Four (d, e, f, g), Four (h, i, j, k) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
-	| Four (a, b, c, d), One e, One f ->
-	    Two (Node3 (a, b, c), Node3 (d, e, f))
-	| Four (a, b, c, d), One e, Two (f, g) ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Four (a, b, c, d), One e, Three (f, g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Four (a, b, c, d), One e, Four (f, g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Four (a, b, c, d), Two (e, f), One g ->
-	    Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-	| Four (a, b, c, d), Two (e, f), Two (g, h) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Four (a, b, c, d), Two (e, f), Three (g, h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Four (a, b, c, d), Two (e, f), Four (g, h, i, j) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-	| Four (a, b, c, d), Three (e, f, g), One h ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
-	| Four (a, b, c, d), Three (e, f, g), Two (h, i) ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Four (a, b, c, d), Three (e, f, g), Three (h, i, j) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-	| Four (a, b, c, d), Three (e, f, g), Four (h, i, j, k) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
-	| Four (a, b, c, d), Four (e, f, g, h), One i ->
-	    Three (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i))
-	| Four (a, b, c, d), Four (e, f, g, h), Two (i, j) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h), Node2 (i, j))
-	| Four (a, b, c, d), Four (e, f, g, h), Three (i, j, k) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node2 (j, k))
-	| Four (a, b, c, d), Four (e, f, g, h), Four (i, j, k, l) ->
-	    Four (Node3 (a, b, c), Node3 (d, e, f), Node3 (g, h, i), Node3 (j, k, l))
-  ) )
-end *)
 
 let nodes_2 d1 d2 =
 Digit.(
 	Node.(
     match d1 with
-    | One a ->
+    | One (a, am) ->
     begin 
       match d2 with
-      | One b ->
-      One (Node2 (a, b))
-      | Two (b, c) ->
-      One (Node3 (a, b, c))
-      | Three (b, c, d) ->
-      Two (Node2 (a, b), Node2 (c, d))
-      | Four (b, c, d, e) ->
-      Two (Node3 (a, b, c), Node2 (d, e))
+      | One (b, bm) ->
+      One (Node2 (a, am, b, bm), am @@ bm)
+      | Two (b, bm, c, cm) ->
+      One (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm)
+      | Three (b, bm, c, cm, d, dm) ->
+      Two (Node2 (a, am, b, bm), am @@ bm, Node2 (c, cm, d, dm), cm @@ dm)
+      | Four (b, bm, c, cm, d, dm, e, em) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
     end
-    | Two (a, b) ->
+    | Two (a, am, b, bm) ->
     begin 
       match d2 with
-      | One c ->
-      One (Node3 (a, b, c))
-      | Two (c, d) ->
-      Two (Node2 (a, b), Node2 (c, d))
-      | Three (c, d, e) ->
-      Two (Node3 (a, b, c), Node2 (d, e))
-      | Four (c, d, e, f) ->
-      Two (Node3 (a, b, c), Node3 (d, e, f))
+      | One (c, cm) ->
+      One (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm)
+      | Two (c, cm, d, dm) ->
+      Two (Node2 (a, am, b, bm), am @@ bm, Node2 (c, cm, d, dm), cm @@ dm)
+      | Three (c, cm, d, dm, e, em) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+      | Four (c, cm, d, dm, e, em, f, fm) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
     end
-    | Three (a, b, c) ->
+    | Three (a, am, b, bm, c, cm) ->
     begin 
       match d2 with
-      | One d ->
-      Two (Node2 (a, b), Node2 (c, d))
-      | Two (d, e) ->
-      Two (Node3 (a, b, c), Node2 (d, e))
-      | Three (d, e, f) ->
-      Two (Node3 (a, b, c), Node3 (d, e, f))
-      | Four (d, e, f, g) ->
-      Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
+      | One (d, dm) ->
+      Two (Node2 (a, am, b, bm), am @@ bm, Node2 (c, cm, d, dm), cm @@ dm)
+      | Two (d, dm, e, em) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+      | Three (d, dm, e, em, f, fm) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+      | Four (d, dm, e, em, f, fm, g, gm) ->
+      Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
     end
-    | Four (a, b, c, d) ->
+    | Four (a, am, b, bm, c, cm, d, dm) ->
     begin 
       match d2 with
-      | One e ->
-      Two (Node3 (a, b, c), Node2 (d, e))
-      | Two (e, f) ->
-      Two (Node3 (a, b, c), Node3 (d, e, f))
-      | Three (e, f, g) ->
-      Three (Node3 (a, b, c), Node2 (d, e), Node2 (f, g))
-      | Four (e, f, g, h) ->
-      Three (Node3 (a, b, c), Node3 (d, e, f), Node2 (g, h))
+      | One (e, em) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em)
+      | Two (e, em, f, fm) ->
+      Two (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm)
+      | Three (e, em, f, fm, g, gm) ->
+      Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node2 (d, dm, e, em), dm @@ em, Node2 (f, fm, g, gm), fm @@ gm)
+      | Four (e, em, f, fm, g, gm, h, hm) ->
+      Three (Node3 (a, am, b, bm, c, cm), am @@ bm @@ cm, Node3 (d, dm, e, em, f, fm), dm @@ em @@ fm, Node2 (g, gm, h, hm), gm @@ hm)
     end
   )
 )
 
-(* let nodes' d1 d2 = begin 
-  match d1, d2 with 
-    Digit.One a, Digit.One b ->
-      Digit.One (Node.Node2 (a, b))
-  | Digit.One a, Digit.Two (b, c) ->
-      Digit.One (Node.Node3 (a, b, c))
-  | Digit.One a, Digit.Three (b, c, d) ->
-      Digit.Two (Node.Node2 (a, b), Node.Node2 (c, d))
-  | Digit.One a, Digit.Four (b, c, d, e) ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-  | Digit.Two (a, b), Digit.One c ->
-      Digit.One (Node.Node3 (a, b, c))
-  | Digit.Two (a, b), Digit.Two (c, d) ->
-      Digit.Two (Node.Node2 (a, b), Node.Node2 (c, d))
-  | Digit.Two (a, b), Digit.Three (c, d, e) ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-  | Digit.Two (a, b), Digit.Four (c, d, e, f) ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-  | Digit.Three (a, b, c), Digit.One d ->
-      Digit.Two (Node.Node2 (a, b), Node.Node2 (c, d))
-  | Digit.Three (a, b, c), Digit.Two (d, e) ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-  | Digit.Three (a, b, c), Digit.Three (d, e, f) ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-  | Digit.Three (a, b, c), Digit.Four (d, e, f, g) ->
-      Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-  | Digit.Four (a, b, c, d), Digit.One e ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node2 (d, e))
-  | Digit.Four (a, b, c, d), Digit.Two (e, f) ->
-      Digit.Two (Node.Node3 (a, b, c), Node.Node3 (d, e, f))
-  | Digit.Four (a, b, c, d), Digit.Three (e, f, g) ->
-      Digit.Three (Node.Node3 (a, b, c), Node.Node2 (d, e), Node.Node2 (f, g))
-  | Digit.Four (a, b, c, d), Digit.Four (e, f, g, h) ->
-      Digit.Three (Node.Node3 (a, b, c), Node.Node3 (d, e, f), Node.Node2 (g, h))
-end *)
-
 let rec pre_concat : 'a . 'a t -> 'a Digit.t -> 'a t -> 'a t = 
 fun xs ts ys -> begin 
   match xs with
-    Empty -> Digit.fold_right consl ts ys
-  | Single x -> consl x (Digit.fold_right consl ts ys)
-  | Deep (pr1, m1, sf1) -> begin 
+    Empty -> Digit.fold_right_m consl ts ys
+  | Single (x, xm) -> consl x xm (Digit.fold_right_m consl ts ys)
+  | Deep (pr1, pr1m, m1, m1m, sf1, sf1m) -> begin 
       match ys with
-        Empty -> Digit.fold_left consr xs ts
-      | Single y -> consr (Digit.fold_left consr xs ts) y
-      | Deep (pr2, m2, sf2) ->
+        Empty -> Digit.fold_left_m consr xs ts
+      | Single (y, ym) -> consr (Digit.fold_left_m consr xs ts) y ym
+      | Deep (pr2, pr2m, m2, m2m, sf2, sf2m) ->
 	       let m' = pre_concat m1 (nodes_3 sf1 ts pr2) m2 in
-	       Deep (pr1, m', sf2)
+	       Deep (
+		       pr1, pr1m,
+		       m', m1m @@ sf1m @@ (Digit.m ts) @@ pr2m, 
+		       sf2, sf2m
+		     )
 	end
 end
 
 let concat xs ys = begin 
   match xs with
     Empty -> ys
-  | Single x -> consl x ys
-  | Deep (pr1, m1, sf1) -> begin 
+  | Single (x, xm) -> consl x xm ys
+  | Deep (pr1, pr1m, m1, m1m, sf1, sf1m) -> begin 
       match ys with
         Empty -> xs
-      | Single y -> consr xs y
-      | Deep (pr2, m2, sf2) ->
+      | Single (y, ym) -> consr xs y ym
+      | Deep (pr2, pr2m, m2, m2m, sf2, sf2m) ->
 	       let m' = pre_concat m1 (nodes_2 sf1 pr2) m2 in
-	       Deep (pr1, m', sf2)
+	       Deep (pr1, pr1m, m', m1m @@ sf1m @@ pr2m @@ m2m, sf2, sf2m)
 	end
 end
