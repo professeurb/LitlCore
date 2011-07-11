@@ -44,6 +44,18 @@ module M2 : MONOID = struct
   let lift a = 1
   let combine a b = a + b
 end
+
+module M = struct 
+  type 'a t = 'a option
+  let identity = None
+  let lift a = Some a
+  let combine a b = begin 
+    match b with
+      None -> a
+    | _ -> b
+  end
+end
+
 *)
 
 module type FINGER_TREE = sig 
@@ -52,6 +64,8 @@ module type FINGER_TREE = sig
   
   val empty : 'a t
   val is_empty : 'a t -> bool
+  
+  val measure : 'a t -> 'a m
   
   val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a
   val fold_right : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
@@ -187,14 +201,15 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
     | _ -> false
   end
   
-  let mon ft = begin 
+  let measure ft = begin 
     match ft with
       Empty -> M.identity
     | Single (_, xm) -> xm
     | Deep (_, prm, _, mm, _, sfm) -> prm @@ mm @@ sfm
   end
   
-  let rec fold_right : 'a 'b 'c. ('a -> 'b -> 'b) -> ('a, 'c) ft -> 'b -> 'b = begin 
+  let rec fold_right : 'a 'b 'c. ('a -> 'b -> 'b) -> ('a, 'c) ft -> 'b -> 'b =
+	begin 
     fun f t z -> match t with
       Empty -> z
     | Single (x, _) -> f x z
@@ -204,7 +219,8 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   		)
   end	
   
-  let rec fold_left : 'a 'b 'c. ('a -> 'b -> 'a) -> 'a -> ('b, 'c) ft -> 'a = begin 
+  let rec fold_left : 'a 'b 'c. ('a -> 'b -> 'a) -> 'a -> ('b, 'c) ft -> 'a =
+	begin 
     fun f z t -> match t with
       Empty -> z
     | Single (x, _) -> f z x
@@ -214,7 +230,8 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   		) sf
   end
   
-  let rec iter : 'a 'b. ('a -> unit) -> ('a, 'b) ft -> unit = begin 
+  let rec iter : 'a 'b. ('a -> unit) -> ('a, 'b) ft -> unit =
+	begin 
     fun f t -> match t with
       Empty -> ()
     | Single (x, _) -> f x
@@ -224,12 +241,17 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
         Digit.iter f sf
   end
   
-  let rec consl : 'a 'b. 'a -> 'b m -> ('a, 'b) ft -> ('a, 'b) ft = begin 
+  let rec consl : 'a 'b. 'a -> 'b m -> ('a, 'b) ft -> ('a, 'b) ft =
+	begin 
     fun a am ft -> 
   	  match ft with
   	    Empty -> Single (a, am)
   	  | Single (b, bm) ->
-  		    Deep (Digit.One (a, am), am, Empty, M.identity, Digit.One (b, bm), bm)
+  		    Deep (
+	          Digit.One (a, am), am,
+	          Empty, M.identity,
+	          Digit.One (b, bm), bm
+	        )
   	  | Deep (Digit.Four (b, bm, c, cm, d, dm, e, em), _, m, mm, sf, sfm) ->
   		    let cdem = cm @@ dm @@ em in 
           Deep (
@@ -256,7 +278,8 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   end
   let cons = cons_left
   
-  let rec consr : 'a 'b. ('a, 'b) ft -> 'a -> 'b m -> ('a, 'b) ft = begin 
+  let rec consr : 'a 'b. ('a, 'b) ft -> 'a -> 'b m -> ('a, 'b) ft =
+	begin 
     fun ft a am -> 
   	  match ft with
   	    Empty -> Single (a, am)
@@ -297,7 +320,8 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
     fold_right List.cons s []
   end
   
-  let rec nextl : 'a 'b. ('a, 'b) ft -> ('a * ('a, 'b) ft * 'b m) option = begin 
+  let rec nextl : 'a 'b. ('a, 'b) ft -> ('a * ('a, 'b) ft * 'b m) option =
+	begin 
     fun ft ->
   	  match ft with
   	    Empty -> None
@@ -305,7 +329,11 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   	  | Deep (Digit.One (a, _), _, m, mm, sf, sfm) ->
   		    Some (a, deepl m sf sfm, mm @@ sfm)
   	  | Deep (Digit.Two (a, _, b, bm), _, m, mm, sf, sfm) ->
-  		    Some (a, Deep (Digit.One (b, bm), bm, m, mm, sf, sfm), bm @@ mm @@ sfm)
+  		    Some (
+	          a,
+	          Deep (Digit.One (b, bm), bm, m, mm, sf, sfm),
+	          bm @@ mm @@ sfm
+	        )
   	  | Deep (Digit.Three (a, _, b, bm, c, cm), _, m, mm, sf, sfm) ->
           let bcm = bm @@ cm in
   		    Some (a,
@@ -323,7 +351,9 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   				  ), bcdm @@ mm @@ sfm
   				)
   end
-  and deepl : 'a 'b. (('a, 'b) node, 'b) ft -> ('a, 'b) digit -> 'b m -> ('a, 'b) ft = begin 
+  and deepl : 'a 'b. (('a, 'b) node, 'b) ft ->
+	  ('a, 'b) digit -> 'b m -> ('a, 'b) ft =
+  begin 
   	fun m sf sfm ->  
   	  match nextl m with
           None -> Digit.fold_right_m consl sf Empty
@@ -336,7 +366,8 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   	| Some (a, ft, _) -> Some (a, ft)
   end
   
-  let rec nextr : 'a 'b. ('a, 'b) ft -> (('a, 'b) ft * 'b m * 'a) option = begin 
+  let rec nextr : 'a 'b. ('a, 'b) ft -> (('a, 'b) ft * 'b m * 'a) option =
+	begin 
     fun ft ->
   	  match ft with
   	    Empty -> None
@@ -364,7 +395,9 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   				  ), prm @@ mm @@ dcbm, a
   				)
   end
-  and deepr : 'a 'b. ('a, 'b) digit -> 'b m -> (('a, 'b) node, 'b) ft -> ('a, 'b) ft = begin 
+  and deepr : 'a 'b. ('a, 'b) digit -> 'b m ->
+	  (('a, 'b) node, 'b) ft -> ('a, 'b) ft =
+	begin 
   	fun pr prm m ->  
   	  match nextr m with
           None -> Digit.fold_left_m consr Empty pr
@@ -376,22 +409,6 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
       None -> None
     | Some (ft, _, a) -> Some (ft, a)
   end
-  
-  (*
-  let nl n =
-    let rec aux n l =
-      if n = 0 then l else aux (n-1) (n :: l)
-    in aux n []
-  ;;
-  
-  let ft = from_list (nl 20) ;;
-  let Some (ft, v) = next_right ft ;;
-  let Some (v, ft) = next ft ;;
-  
-  let ft1 = from_list (nl 10) ;;
-  let ft2 = from_list (nl 7) ;;
-  let ft = concat ft1 ft2 ;;
-  *)
   
   (* For automatically generating function "nodes"
   
@@ -483,7 +500,7 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
       => "Node3 ($1, $1m, $2, $2m, $3, $3m), $1m @@ $2m @@ $3m"
   *)
   
-  let nodes_3 d1 d2 d3 =
+  let nodes_3 d1 d2 d3 = begin 
   Digit.(
   	Node.(
       match d1 with
@@ -697,8 +714,9 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
       end
     )
   )
+  end
   
-  let nodes_2 d1 d2 =
+  let nodes_2 d1 d2 = begin 
   Digit.(
   	Node.(
       match d1 with
@@ -752,8 +770,10 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
       end
     )
   )
-  
-  let rec pre_concat : 'a 'b. ('a, 'b) ft -> ('a, 'b) digit -> ('a, 'b) ft -> ('a, 'b) ft = 
+  end
+
+  let rec pre_concat : 'a 'b. ('a, 'b) ft ->
+	  ('a, 'b) digit -> ('a, 'b) ft -> ('a, 'b) ft = 
   fun xs ts ys -> begin 
     match xs with
       Empty -> Digit.fold_right_m consl ts ys
@@ -766,7 +786,7 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   	       let m' = pre_concat m1 (nodes_3 sf1 ts pr2) m2 in
   	       Deep (
   		       pr1, pr1m,
-  		       m', m1m @@ sf1m @@ (Digit.m ts) @@ pr2m, 
+  		       m', m1m @@ sf1m @@ (Digit.m ts) @@ pr2m @@ m2m, 
   		       sf2, sf2m
   		     )
   	end
@@ -793,7 +813,7 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
     | Two (a, am, b, bm) ->
   	    if p (i @@ am)
   	    then None, a, Some (One (b, bm))
-  	    else Some (One (a,am)), b, None
+  	    else Some (One (a, am)), b, None
   	| Three (a, am, b, bm, c, cm) ->
   		  let i1 = i @@ am in
   		  if p i1
@@ -843,7 +863,8 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   )
   end
   
-  let rec split_tree : 'a 'b. ('b m -> bool) -> 'b m -> ('a, 'b) ft -> ('a, 'b) ft * 'a * ('a, 'b) ft =
+  let rec split_tree : 'a 'b. ('b m -> bool) -> 'b m ->
+	  ('a, 'b) ft -> ('a, 'b) ft * 'a * ('a, 'b) ft =
   fun p i ft -> begin 
     match ft with 
     | Empty -> assert false
@@ -870,7 +891,7 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   		if p vm
   		then begin
   		  let (ml, xs, mr) = split_tree p vpr m in
-  		  let mlm = mon ml in
+  		  let mlm = measure ml in
   		  let (l_opt, x, r_opt) = split_node p (vpr @@ mlm) xs in
   		  (
   			  begin
@@ -881,7 +902,7 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
   			  x,
   			  match r_opt with
   			    None -> deepl mr sf sfm
-  			  | Some r -> Deep (r, Digit.m r, mr, mon mr, sf, sfm)
+  			  | Some r -> Deep (r, Digit.m r, mr, measure mr, sf, sfm)
   			) 
   		end
      	else begin 
@@ -904,7 +925,7 @@ module Make (M : MONOID) : FINGER_TREE with type 'a m = 'a M.t
     match ft with
       Empty -> (Empty, Empty)
     | _ -> begin 
-        if p (mon ft) then begin 
+        if p (measure ft) then begin 
           let (l, x, r) = split_tree p M.identity ft in
           (l, cons x r)
         end else (ft, Empty)

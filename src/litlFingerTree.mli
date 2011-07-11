@@ -20,6 +20,8 @@ module type FINGER_TREE = sig
   val empty : 'a t
   val is_empty : 'a t -> bool
   
+  val measure : 'a t -> 'a m
+
   val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a
   val fold_right : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val iter : ('a -> unit) -> 'a t -> unit
