@@ -15,6 +15,7 @@ module List = struct
   let cons a b = a :: b
 end
 
+(*
 module M : sig 
   type 'a t
   val identity : 'a t
@@ -35,6 +36,7 @@ end
     end
 	end
 end
+*)
 
 module M = struct 
   type 'a t = int
@@ -152,6 +154,13 @@ let is_empty t = begin
   match t with
     Empty -> true
   | _ -> false
+end
+
+let mon ft = begin 
+  match ft with
+    Empty -> M.identity
+  | Single (_, xm) -> xm
+  | Deep (_, prm, _, mm, _, sfm) -> prm @@ mm @@ sfm
 end
 
 let rec fold_right : 'a 'b . ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b = begin 
@@ -344,7 +353,7 @@ let nl n =
   in aux n []
 ;;
 
-let ft = from_list (nl 10) ;;
+let ft = from_list (nl 20) ;;
 let Some (ft, v) = next_right ft ;;
 let Some (v, ft) = next ft ;;
 
@@ -745,3 +754,145 @@ let concat xs ys = begin
 	       Deep (pr1, pr1m, m', m1m @@ sf1m @@ pr2m @@ m2m, sf2, sf2m)
 	end
 end
+
+let split_digit p i digit = begin 
+Digit.(
+  match digit with
+    One (a, _) -> None, a, None
+  | Two (a, am, b, bm) ->
+	    if p (i @@ am)
+	    then None, a, Some (One (b, bm))
+	    else Some (One (a,am)), b, None
+	| Three (a, am, b, bm, c, cm) ->
+		  let i1 = i @@ am in
+		  if p i1
+		  then None, a, Some (Two (b, bm, c, cm))
+		  else
+			let i2 = i1 @@ bm in
+	    if p i2
+	    then Some (One (a, am)), b, Some (One (c, cm))
+      else Some (Two (a, am, b, bm)), c, None
+  | Four (a, am, b, bm, c, cm, d, dm) ->
+	    let i1 = i @@ am in
+	    if p i1
+	    then None, a, Some (Three (b, bm, c, cm, d, dm))
+      else
+	    let i2 = i1 @@ bm in
+	    if p i2
+	    then Some (One (a, am)), b, Some (Two (c, cm, d, dm))
+      else
+	    let i3 = i2 @@ cm in
+	    if p i3
+	    then Some (Two (a, am, b, bm)), c, Some (One (d, dm))
+	    else Some (Three (a, am, b, bm, c, cm)), d, None
+)
+end
+
+(* val split_node : ('a m -> bool) -> 'a m
+    -> 'a node -> 'a digit option * 'a * 'a digit option
+*)
+let split_node p i digit = begin 
+Digit.(
+	Node.(
+    match digit with
+      Node2 (a, am, b, bm) ->
+  	    if p (i @@ am)
+  	    then None, a, Some (One (b, bm))
+  	    else Some (One (a,am)), b, None
+  	| Node3 (a, am, b, bm, c, cm) ->
+  		  let i1 = i @@ am in
+  		  if p i1
+  		  then None, a, Some (Two (b, bm, c, cm))
+  		  else
+  			let i2 = i1 @@ bm in
+  	    if p i2
+  	    then Some (One (a, am)), b, Some (One (c, cm))
+        else Some (Two (a, am, b, bm)), c, None
+  )
+)
+end
+
+let rec split_tree : 'a . ('a m -> bool) -> 'a m -> 'a t -> 'a t * 'a * 'a t =
+fun p i ft -> begin 
+  match ft with 
+  | Empty -> assert false
+  | Single (x, _) -> Empty, x, Empty
+  | Deep (pr, prm, m, mm, sf, sfm) ->
+	  let vpr = i @@ prm in
+	  if p vpr
+	  then begin 
+	    let (l_opt, x, r_opt) = split_digit p i pr
+	    in (
+		    begin 
+  		    match l_opt with
+  		      None -> Empty
+  		    | Some l -> Digit.fold_right_m consl l Empty
+        end,
+		    x,
+		    match r_opt with
+		      None -> deepl m sf sfm
+		    | Some r -> Deep (r, Digit.m r, m, mm, sf, sfm)
+		  )
+    end
+		else
+		let vm = vpr @@ mm in
+		if p vm
+		then begin
+		  let (ml, xs, mr) = split_tree p vpr m in
+		  let mlm = mon ml in
+		  let (l_opt, x, r_opt) = split_node p (vpr @@ mlm) xs in
+		  (
+			  begin
+  				match l_opt with
+  			    None -> deepr pr prm ml
+  			  | Some l -> Deep (pr, prm, ml, mlm, l, Digit.m l)
+			  end,
+			  x,
+			  match r_opt with
+			    None -> deepl mr sf sfm
+			  | Some r -> Deep (r, Digit.m r, mr, mon mr, sf, sfm)
+			) 
+		end
+   	else begin 
+	    let (l_opt, x, r_opt) = split_digit p vm sf
+      in (
+	      begin
+  		    match l_opt with
+  	        None -> deepr pr prm m
+  	      | Some l -> Deep (pr, prm, m, mm, l, Digit.m l)
+        end,
+	      x,
+	      match r_opt with
+	        None -> Empty
+	      | Some r -> Digit.fold_right_m consl r Empty
+	    )
+	  end
+end
+
+let split p ft = begin 
+  match ft with
+    Empty -> (Empty, Empty)
+  | _ -> begin 
+      if p (mon ft) then begin 
+        let (l, x, r) = split_tree p M.identity ft in
+        (l, cons x r)
+      end else (ft, Empty)
+  end
+end
+
+(*
+let nl n =
+  let rec aux n l =
+    if n = 0 then l else aux (n-1) (n :: l)
+  in aux n []
+;;
+
+let nl100 = nl 100 ;;
+let ft = from_list (nl 100) ;;
+
+for i = 1 to 100 do
+  let (ft1, v, ft2) = split_tree (fun x -> x >= i) 0 ft in
+  Printf.printf "%d : %s %s \n" i (if v = i then "T" else "F") (if (to_list ft1) @ (v :: (to_list ft2)) = nl100 then "T" else "F")
+done
+
+*)

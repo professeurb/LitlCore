@@ -27,3 +27,5 @@ val next_right : 'a t -> ('a t * 'a) option
 
 val concat : 'a t -> 'a t -> 'a t
 
+val split_tree : ('a m -> bool) -> 'a m -> 'a t -> 'a t * 'a * 'a t
+val split : ('a m -> bool) -> 'a t -> 'a t * 'a t
