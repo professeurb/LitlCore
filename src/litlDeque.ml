@@ -117,33 +117,34 @@ let rec iter : 'a . ('a -> unit) -> 'a t -> unit = begin
       Digit.iter f sf
 end
 
-let rec consl : 'a . 'a -> 'a t -> 'a t = begin 
+let rec cons_left : 'a . 'a -> 'a t -> 'a t = begin 
   fun a ft -> 
 	  match ft with
 	    Empty -> Single a
 	  | Single b -> Deep (Digit.One a, Empty, Digit.One b)
 	  | Deep (Digit.Four (b, c, d, e), m, sf) ->
-        Deep (Digit.Two (a, b), (consl (Node.Node3 (c, d, e)) m), sf)
+        Deep (Digit.Two (a, b), (cons_left (Node.Node3 (c, d, e)) m), sf)
 	  | Deep (Digit.One b, m, sf) -> Deep (Digit.Two (a, b), m, sf)
 	  | Deep (Digit.Two (b, c), m, sf) -> Deep (Digit.Three (a, b, c), m, sf)
 	  | Deep (Digit.Three (b, c, d), m, sf) ->
         Deep (Digit.Four (a, b, c, d), m, sf)
 end
+let cons = cons_left
 
-let rec consr : 'a . 'a t -> 'a -> 'a t = begin 
+let rec cons_right : 'a . 'a t -> 'a -> 'a t = begin 
   fun ft a -> 
 	  match ft with
 	    Empty -> Single a
 	  | Single b -> Deep (Digit.One b, Empty, Digit.One a)
 	  | Deep (pr, m, Digit.Four (e, d, c, b)) ->
-        Deep (pr, (consr m (Node.Node3 (e, d, c))), Digit.Two (b, a))
+        Deep (pr, (cons_right m (Node.Node3 (e, d, c))), Digit.Two (b, a))
 	  | Deep (pr, m, Digit.One b) -> Deep (pr, m, Digit.Two (b, a))
 	  | Deep (pr, m, Digit.Two (c, b)) -> Deep (pr, m, Digit.Three (c, b, a))
 	  | Deep (pr, m, Digit.Three (d, c, b)) ->
         Deep (pr, m, Digit.Four (d, c, b, a))
 end
 
-let from_list s = List.fold_right consl s Empty ;;
+let from_list s = List.fold_right cons_left s Empty ;;
 let to_list s = fold_right List.cons s [] ;;
 
 let rec next : 'a . 'a t -> ('a * 'a t) option = begin 
@@ -163,11 +164,11 @@ end
 and deepl : 'a . ('a Node.t) t -> 'a Digit.t -> 'a t = begin 
 	fun m sf ->  
 	  match next m with
-        None -> Digit.fold_right consl sf Empty
+        None -> Digit.fold_right cons_left sf Empty
       | Some (a, m') -> Deep (Digit.from_node a, m', sf)
 end
 
-let rec nextr : 'a . 'a t -> ('a t * 'a) option = begin 
+let rec next_right : 'a . 'a t -> ('a t * 'a) option = begin 
   fun ft ->
 	  match ft with
 	    Empty -> None
@@ -183,8 +184,8 @@ let rec nextr : 'a . 'a t -> ('a t * 'a) option = begin
 end
 and deepr : 'a . 'a Digit.t -> ('a Node.t) t -> 'a t = begin 
 	fun pr m ->  
-	  match nextr m with
-        None -> Digit.fold_left consr Empty pr
+	  match next_right m with
+        None -> Digit.fold_left cons_right Empty pr
       | Some (m', a) -> Deep (pr, m', Digit.from_node a)
 end
 
@@ -711,12 +712,12 @@ end *)
 let rec pre_concat : 'a . 'a t -> 'a Digit.t -> 'a t -> 'a t = 
 fun xs ts ys -> begin 
   match xs with
-    Empty -> Digit.fold_right consl ts ys
-  | Single x -> consl x (Digit.fold_right consl ts ys)
+    Empty -> Digit.fold_right cons_left ts ys
+  | Single x -> cons_left x (Digit.fold_right cons_left ts ys)
   | Deep (pr1, m1, sf1) -> begin 
       match ys with
-        Empty -> Digit.fold_left consr xs ts
-      | Single y -> consr (Digit.fold_left consr xs ts) y
+        Empty -> Digit.fold_left cons_right xs ts
+      | Single y -> cons_right (Digit.fold_left cons_right xs ts) y
       | Deep (pr2, m2, sf2) ->
 	       let m' = pre_concat m1 (nodes_3 sf1 ts pr2) m2 in
 	       Deep (pr1, m', sf2)
@@ -726,11 +727,11 @@ end
 let concat xs ys = begin 
   match xs with
     Empty -> ys
-  | Single x -> consl x ys
+  | Single x -> cons_left x ys
   | Deep (pr1, m1, sf1) -> begin 
       match ys with
         Empty -> xs
-      | Single y -> consr xs y
+      | Single y -> cons_right xs y
       | Deep (pr2, m2, sf2) ->
 	       let m' = pre_concat m1 (nodes_2 sf1 pr2) m2 in
 	       Deep (pr1, m', sf2)

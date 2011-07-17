@@ -545,8 +545,8 @@ end
 	    List l -> List (elt :: l)
 	  | Concat (List l, enum_list) -> Concat (List (elt :: l), enum_list)
 	  | Concat (enum', enum_list) ->
-		    Concat (List [elt], LitlDeque.consl enum' enum_list)
-	  | _ -> Concat (List [elt], LitlDeque.consl enum LitlDeque.empty)
+		    Concat (List [elt], LitlDeque.cons enum' enum_list)
+	  | _ -> Concat (List [elt], LitlDeque.cons enum LitlDeque.empty)
   end
 
 	let rec next e = begin 
@@ -749,13 +749,13 @@ end
 			Concat (e1', el1) -> begin 
 				match e2 with
 					Concat (e2', el2) ->
-						Concat (e1', LitlDeque.concat el1 (LitlDeque.consl e2' el2))
-				| _ -> Concat (e1', LitlDeque.consr el1 e2)
+						Concat (e1', LitlDeque.concat el1 (LitlDeque.cons e2' el2))
+				| _ -> Concat (e1', LitlDeque.cons_right el1 e2)
 			end
 		| _ -> begin 
 			match e2 with
-				Concat (e2', el2) -> Concat (e1, LitlDeque.consl e2' el2)
-			| _ -> Concat (e1, LitlDeque.consl e2 LitlDeque.empty)
+				Concat (e2', el2) -> Concat (e1, LitlDeque.cons e2' el2)
+			| _ -> Concat (e1, LitlDeque.cons e2 LitlDeque.empty)
 		end
 	end
 
