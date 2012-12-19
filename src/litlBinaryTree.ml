@@ -8,7 +8,7 @@
 *
 ************************************************************************)
 
-type 'a t = Empty | Node of 'a t * 'a * 'a t * int 
+type ('a, 'b) t = Empty | Node of ('a, 'b) t * 'a * ('a, 'b) t * 'b
 
 let rec fold f t res = begin 
 	match t with

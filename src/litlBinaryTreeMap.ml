@@ -8,9 +8,9 @@
 *
 ************************************************************************)
 
-type ('a, 'b) t =
+type ('a, 'b, 'c) t =
 	Empty
-| Node of ('a, 'b) t * 'a * 'b * ('a, 'b) t * int 
+| Node of ('a, 'b, 'c) t * 'a * 'b * ('a, 'b, 'c) t * 'c
 
 let rec fold f t res = begin 
 	match t with

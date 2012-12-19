@@ -1,7 +1,4 @@
-_build/*
-_tags*
-myocamlbuild.ml
-setup.*
-src/META
-src/Litl.mllib
+_build
 .DS_Store
+setup.data
+setup.log

@@ -25,7 +25,7 @@ end
 module TreeEnumerator : sig 
 	type 'a t
 	
-	val make : 'a BT.t -> 'a t
+	val make : ('a, 'b) BT.t -> 'a t
 	val next : 'a t -> ('a * 'a t) option
 	val iter : ('a -> unit) -> 'a t -> unit
 	val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
@@ -33,25 +33,25 @@ module TreeEnumerator : sig
 end
 = struct 
 	(* An 'a zipper as actually some kind of partial tree zipper *)
-	type 'a zipper = End | More of 'a * 'a BT.t * 'a zipper
+	type ('a, 'b) zipper = End | More of 'a * ('a, 'b) BT.t * ('a, 'b) zipper
 
-	type 'a t = 'a BT.t * 'a zipper
+	type 'a t = C : ('a, 'b) BT.t * ('a, 'b) zipper -> 'a t
 
 	let make t = begin 
-		t, End
+		C (t, End)
 	end
 
-	let rec next t = begin 
-		match t with
+	let rec next (C (t, z)) = begin 
+		match (t, z) with
 			(BT.Empty, End) -> None
-		| (BT.Empty, More (v, bt, z)) -> Some (v, (bt, z))
+		| (BT.Empty, More (v, bt, z)) -> Some (v, C (bt, z))
 		| (BT.Node (BT.Empty, v, right, _), z) ->
-				Some (v, (right, z))
+				Some (v, C (right, z))
 		| (BT.Node (left, v, right, _), z) ->
-				next (left, More (v, right, z))
+				next (C (left, More (v, right, z)))
 	end
 
-	let iter f (t, z) = begin 
+	let iter f (C (t, z)) = begin 
 		let rec aux z = begin 
 			match z with
 				End -> ()
@@ -65,7 +65,7 @@ end
 		aux z
 	end
 
-	let fold f (t, z) res = begin 
+	let fold f (C (t, z)) res = begin 
 		let rec aux z r = begin 
 			match z with
 				End -> r
@@ -76,7 +76,7 @@ end
 		aux z (BT.fold f t res)
 	end
 
-	let skip_until f (t, z) = begin 
+	let skip_until f (C (t, z)) = begin 
 	  let rec aux_2 t z = begin 
 	    match t with
 	      BT.Node (l, v, r, _) ->
@@ -86,7 +86,7 @@ end
 	    | BT.Empty -> begin 
 	        match z with
 	          End -> None
-	        | More (v, t', z') -> Some (v, (t', z'))
+	        | More (v, t', z') -> Some (v, C (t', z'))
 	    end
 	  end in
 	  let rec aux_1 t z = begin 
@@ -102,7 +102,7 @@ end
 module TreeMapEnumerator : sig 
 	type ('a, 'b) t
 	
-	val make : ('a, 'b) BTM.t -> ('a, 'b) t
+	val make : ('a, 'b, 'c) BTM.t -> ('a, 'b) t
 	val next : ('a, 'b) t -> (('a * 'b) * ('a, 'b) t) option
 	val iter : ('a * 'b -> unit) -> ('a, 'b) t -> unit
 	val fold : ('a * 'b -> 'c -> 'c) -> ('a, 'b) t -> 'c -> 'c
@@ -110,25 +110,25 @@ module TreeMapEnumerator : sig
 		('a * 'b -> bool) -> ('a, 'b) t -> (('a * 'b) * ('a, 'b) t) option
 end
 = struct 
-	type ('a, 'b) zipper = End | More of
+	type ('a, 'b, 'c) zipper = End | More of
 			('a * 'b) *
-			('a, 'b) BTM.t * ('a, 'b) zipper
+			('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper
 
-	type ('a, 'b) t = ('a, 'b) BTM.t * ('a, 'b) zipper
+	type ('a, 'b) t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> ('a, 'b) t
 
 	let make t = begin 
-		t, End
+		C (t, End)
 	end
 
-	let rec next t = begin 
-		match t with
+	let rec next (C (t, z)) = begin 
+		match (t, z) with
 			(BTM.Empty, End) -> None
-		| (BTM.Empty, More (v, bt, z)) -> Some (v, (bt, z))
-		| (BTM.Node (BTM.Empty, v, k, r, _), z) -> Some ((v, k), (r, z))
-		| (BTM.Node (l, v, k, r, _), z) -> next (l, More ((v, k), r, z))
+		| (BTM.Empty, More (v, bt, z)) -> Some (v, C (bt, z))
+		| (BTM.Node (BTM.Empty, v, k, r, _), z) -> Some ((v, k), C (r, z))
+		| (BTM.Node (l, v, k, r, _), z) -> next (C (l, More ((v, k), r, z)))
 	end
 
-	let iter f (bt, z) = begin 
+	let iter f (C (bt, z)) = begin 
 		let rec aux z = begin 
 			match z with
 				End -> ()
@@ -142,7 +142,7 @@ end
 		aux z
 	end
 
-	let fold f (t, z) res = begin 
+	let fold f (C (t, z)) res = begin 
 		let rec aux z r = begin 
 			match z with
 				End -> r
@@ -152,7 +152,7 @@ end
 		aux z (BTM.fold_elts f t res)
 	end
 
-	let skip_until f (bt, z) = begin 
+	let skip_until f (C (bt, z)) = begin 
 	  let rec aux_2 bt z = begin 
 	    match bt with
 	      BTM.Node (l, k, v, r, _) ->
@@ -162,7 +162,7 @@ end
 	    | BTM.Empty -> begin 
 	        match z with
 	          End -> None
-	        | More (kv, bt', z') -> Some (kv, (bt', z'))
+	        | More (kv, bt', z') -> Some (kv, C (bt', z'))
 	    end
 	  end in
 	  let rec aux_1 bt z = begin 
@@ -176,65 +176,40 @@ end
 end
 
 module TreeMapKeyEnumerator : sig 
-	type 'a t 
-	val make : ('a, 'b) BTM.t -> 'a t
+	type 'a t
+	
+	val make : ('a, 'b, 'c) BTM.t -> 'a t
 	val next : 'a t -> ('a * 'a t) option
-	val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
 	val iter : ('a -> unit) -> 'a t -> unit
-	val skip_until : ('a -> bool) -> 'a t -> ('a * 'a t) option
+	val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+	val skip_until :
+		('a -> bool) -> 'a t -> ('a * 'a t) option
 end
 = struct 
-	type ('a, 'b) zipper = End | More of 'a * ('a, 'b) BTM.t * ('a, 'b) zipper
+	type ('a, 'b, 'c) zipper = End | More of
+			'a *
+			('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper
 
-	type ('a, 'b) enumer = ('a, 'b) BTM.t * ('a, 'b) zipper
-	type ('a, 'r) applier = { f : 'b. ('a, 'b) enumer -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'a t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> 'a t
 
-	let make t = begin { 
-		  apply = fun applier -> applier.f (t, End)
-		}
+	let make t = begin 
+		C (t, End)
 	end
 
-	let rec nexter t = begin 
-		match t with
+	let rec next (C (t, z)) = begin 
+		match (t, z) with
 			(BTM.Empty, End) -> None
-		| (BTM.Empty, More (v, bt, z)) -> Some (v,
-				{	apply = fun applier -> applier.f (bt, z)
-				}
-			)
-		| (BTM.Node
-				(BTM.Empty, v, _, r, _), z) ->
-				Some (v,
-					{ apply = fun applier -> applier.f (r, z)
-					}
-				)
-		| (BTM.Node (l, v, _, r, _), z) ->
-				nexter (l, More (v, r, z))
-	end
-	let next t = begin 
-	  t.apply { f = nexter}
+		| (BTM.Empty, More (k, bt, z)) -> Some (k, C (bt, z))
+		| (BTM.Node (BTM.Empty, k, _, r, _), z) -> Some (k, C (r, z))
+		| (BTM.Node (l, k, _, r, _), z) -> next (C (l, More (k, r, z)))
 	end
 
-	let folder f (bt, z) res = begin 
-		let rec aux z r = begin 
-			match z with
-				End -> r
-			| More (v, bt', z') ->
-					aux z' (BTM.fold_keys f bt' (f v r))
-		end
-		in
-		aux z (BTM.fold_keys f bt res)
-	end
-	let fold f t r = begin 
-	  t.apply { f = fun g -> folder f g r }
-	end
-
-	let iterer f (bt, z) = begin 
+	let iter f (C (bt, z)) = begin 
 		let rec aux z = begin 
 			match z with
 				End -> ()
-			| More (v, bt', z') -> begin 
-					f v ;
+			| More (k, bt', z') -> begin 
+					f k ;
 					BTM.iter_keys f bt' ;
 					aux z'
 			end
@@ -242,107 +217,93 @@ end
 		BTM.iter_keys f bt ;
 		aux z
 	end
-	let iter f t = begin 
-	  t.apply { f = fun g -> iterer f g }
+
+	let fold f (C (t, z)) res = begin 
+		let rec aux z r = begin 
+			match z with
+				End -> r
+			| More (k, bt', z') ->
+					aux z' (BTM.fold_keys f bt' (f k r))
+		end in
+		aux z (BTM.fold_keys f t res)
 	end
 
-	let skiper f (bt, z) = begin 
-	  let rec aux_2 bt pldt = begin 
+	let skip_until f (C (bt, z)) = begin 
+	  let rec aux_2 bt z = begin 
 	    match bt with
-	      BTM.Node (left, v, _, right, _) ->
-	        if f v
-	        then aux_2 left (More (v, right, pldt))
-	        else aux_2 right pldt
+	      BTM.Node (l, k, _, r, _) ->
+	        if f k
+	        then aux_2 l (More (k, r, z))
+	        else aux_2 r z
 	    | BTM.Empty -> begin 
-	        match pldt with
+	        match z with
 	          End -> None
-	        | More (v, bt, pldt) -> Some (v,
-							{ apply = fun applier ->
-									applier.f (bt, pldt)
-							}
-						)
+	        | More (k, bt', z') -> Some (k, C (bt', z'))
 	    end
 	  end in
 	  let rec aux_1 bt z = begin 
 	    match z with
-	    More (v, bt', z') -> 
-	      if f v then aux_2 bt z else aux_1 bt' z'
+	    More (k, bt', z') -> 
+	      if f k then aux_2 bt z else aux_1 bt' z'
 	  | End -> aux_2 bt z
 	  end in
 	  aux_1 bt z
-	end
-	let skip_until f t = begin 
-	  t.apply { f = fun t' -> skiper f t' }
 	end
 end
 
 module TreeMapValueEnumerator : sig 
 	type 'a t
 	
-	val make : ('a, 'b) BTM.t -> 'b t
+	val make : ('a, 'b, 'c) BTM.t -> 'b t
 	val next : 'a t -> ('a * 'a t) option
 	val iter : ('a -> unit) -> 'a t -> unit
 	val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
-	val skip_until : ('a -> bool) -> 'a t -> ('a * 'a t) option
+	val skip_until :
+		('a -> bool) -> 'a t -> ('a * 'a t) option
 end
 = struct 
-	type ('a, 'b) zipper = End | More of 'b * ('a, 'b) BTM.t * ('a, 'b) zipper
+	type ('a, 'b, 'c) zipper =  End
+	| More of 'b * ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper
 
-	type ('a, 'b) enumer = ('a, 'b) BTM.t * ('a, 'b) zipper
-	type ('a, 'r) applier = { f : 'b. ('b, 'a) enumer -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'b t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> 'b t
 
 	let make t = begin 
-		{ apply = fun applier -> applier.f (t, End) }
+		C (t, End)
 	end
 
-	let rec nexter t = begin 
-		match t with
+	let rec next (C (t, z)) = begin 
+		match (t, z) with
 			(BTM.Empty, End) -> None
-		| (BTM.Empty, More (v, bt, z)) ->
-			  Some (v, { apply = fun applier -> applier.f (bt, z)})
-		| (BTM.Node (BTM.Empty, _, v, r, _), z) ->
-				Some (v, { apply = fun applier -> applier.f (r, z)})
-		| (BTM.Node (l, _, v, r, _), z) ->
-				nexter (l, More (v, r, z))
+		| (BTM.Empty, More (v, bt, z)) -> Some (v, C (bt, z))
+		| (BTM.Node (BTM.Empty, _, v, r, _), z) -> Some (v, C (r, z))
+		| (BTM.Node (l, _, v, r, _), z) -> next (C (l, More (v, r, z)))
 	end
-	let next t = begin 
-	  t.apply { f = nexter }
-	end 
 
-	let iterer f (t, z) = begin 
+	let iter f (C (bt, z)) = begin 
 		let rec aux z = begin 
 			match z with
 				End -> ()
-			| More (v, t', z') -> begin 
+			| More (v, bt', z') -> begin 
 					f v ;
-					BTM.iter_values f t' ;
+					BTM.iter_values f bt' ;
 					aux z'
 			end
-		end
-		in
-		BTM.iter_values f t ;
+		end in
+		BTM.iter_values f bt ;
 		aux z
 	end
-	let iter f t = begin 
-	  t.apply { f = fun g -> iterer f g }
-	end
 
-	let folder f (t, z) res = begin 
+	let fold f (C (t, z)) res = begin 
 		let rec aux z r = begin 
 			match z with
 				End -> r
-			| More (v, t', z') ->
-					aux z' (BTM.fold_values f t' (f v r))
-		end
-		in
+			| More (v, bt', z') ->
+					aux z' (BTM.fold_values f bt' (f v r))
+		end in
 		aux z (BTM.fold_values f t res)
 	end
-	let fold f t r = begin 
-	  t.apply { f = fun g -> folder f g r }
-	end
 
-	let skiper f (bt, z) = begin 
+	let skip_until f (C (bt, z)) = begin 
 	  let rec aux_2 bt z = begin 
 	    match bt with
 	      BTM.Node (l, _, v, r, _) ->
@@ -352,11 +313,7 @@ end
 	    | BTM.Empty -> begin 
 	        match z with
 	          End -> None
-	        | More (v, bt, z') -> Some (v,
-							{ apply = fun applier ->
-									applier.f (bt, z')
-							}
-						)
+	        | More (k, bt', z') -> Some (k, C (bt', z'))
 	    end
 	  end in
 	  let rec aux_1 bt z = begin 
@@ -367,10 +324,8 @@ end
 	  end in
 	  aux_1 bt z
 	end
-	let skip_until f t = begin 
-	  t.apply { f = fun t' -> skiper f t' }
-	end
 end
+
 
 module Generator : sig 
 	type 'a t
@@ -380,60 +335,35 @@ module Generator : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type ('a, 'b) generator = {
-		func : 'a -> ('a * 'b) option ;
-		state : 'a
-	}
-	type ('a, 'r) applier = { f : 'b. ('b, 'a) generator -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'a t = C : ('a -> ('a * 'b) option) * 'a -> 'b t 
 
-	let make func state = begin 
-		{	apply = fun applier -> applier.f
-			{	func = func ;
-				state = state
-			}
-		}
+	let make f s = begin 
+		C (f, s)
 	end
 
-	let next t = begin 
-	  let next_gen g = begin 
-			match g.func g.state with
-				None -> None
-			| Some (state', value) -> Some (
-				value, 
-				{	apply = fun applier -> applier.f {
-						func = g.func ;
-						state = state'
-					}
-				}
-			)
-		end in
-		t.apply { f = next_gen }
+	let next (C (f, s)) = begin 
+	  match f s with
+	    None -> None
+	  | Some (s', r) -> Some (r, C (f, s'))
 	end
 
-	let fold f t a = begin 
-	  let fold_gen gen result = begin 
-	  	let rec aux state result = begin 
-	  		match gen.func state with
-	  		None -> result
-	  	| Some (state', value) -> aux state' (f value result)
-	  	end in
-	  	aux gen.state result
-	  end in
-	 	t.apply { f = fun g -> fold_gen g a }
-	end
+  let fold f (C (g, s)) a = begin 
+    let rec aux s a = begin 
+      match g s with
+        None -> a
+      | Some (s', r) -> aux s' (f r a)
+    end in
+    aux s a
+  end
 
-	let iter f t = begin 
-	  let iter_gen gen = begin 
-	  	let rec aux s = begin 
-	  		match gen.func s with
-	  		None -> ()
-	  	| Some (s', v) -> f v ; aux s'
-	  	end in
-	  	aux gen.state
-	  end in
-	  t.apply { f = fun g -> iter_gen g }
-	end
+  let iter f (C (g, s)) = begin 
+    let rec aux s = begin 
+      match g s with
+        None -> ()
+      | Some (s', r) -> f r ; aux s'
+    end in
+    aux s
+  end
 end
 
 module rec Enum : sig 
@@ -445,10 +375,10 @@ module rec Enum : sig
 	val from_generator : ('a -> ('a * 'b) option) -> 'a -> 'b t
 	val from_unit_generator : (unit -> 'a option) -> 'a t
 	val from_object : 'a enumerator -> 'a t
-	val from_binary_tree : 'a BT.t -> 'a t
-	val from_binary_tree_map : ('a, 'b) BTM.t -> ('a * 'b) t
-	val from_binary_tree_map_keys : ('a, 'b) BTM.t -> 'a t
-	val from_binary_tree_map_values : ('a, 'b) BTM.t -> 'b t
+	val from_binary_tree : ('a, 'b) BT.t -> 'a t
+	val from_binary_tree_map : ('a, 'b, 'c) BTM.t -> ('a * 'b) t
+	val from_binary_tree_map_keys : ('a, 'b, 'c) BTM.t -> 'a t
+	val from_binary_tree_map_values : ('a, 'b, 'c) BTM.t -> 'b t
 	val from_stream : 'a Stream.t -> 'a t
 	val from_once : (unit -> ('a * 'a t) option) -> 'a t
 	val cons : 'a -> 'a t -> 'a t
@@ -474,10 +404,11 @@ end
 		Empty
 	| List of 'a list
 	| BT of 'a TreeEnumerator.t
+	(* | BTM : ('a, 'b) TreeMapEnumerator.t -> ('a * 'b) t *)
 	| BTMKey of 'a TreeMapKeyEnumerator.t
 	| BTMValue of 'a TreeMapValueEnumerator.t
 	| Once of (unit -> ('a * 'a t) option)
-	| Gen of 'a Generator.t
+	| Gen of 'a Generator.t 
 	| Obj of 'a enumerator
 	| Memo of 'a Memo.t
 	| Map of 'a Mapper.t
@@ -516,19 +447,20 @@ end
 			method fold : 'c. (('a * 'b) -> 'c -> 'c) -> 'c -> 'c = fun f a -> begin 
 				TreeMapEnumerator.fold f em a
 			end
-			
+
 			method skip_until f = begin 
 			  match TreeMapEnumerator.skip_until f em with
 			    None -> None
 			  | Some (v, em') -> Some (v, {< em = em' >})
 			end
-			
+
 			method memoized = begin 
 				true
 		  end
 		end in
 		Obj (obj : ('a * 'b) enumerator)
 	end
+	(* let from_binary_tree_map t = BTM (TreeMapEnumerator.make t) *)
 
 	let from_binary_tree_map_keys m = begin 
 		BTMKey (TreeMapKeyEnumerator.make m)
@@ -549,8 +481,7 @@ end
 	  | _ -> Concat (List [elt], LitlDeque.cons enum LitlDeque.empty)
   end
 
-	let rec next e = begin 
-		match e with
+	let rec next = function 
 			Empty -> None
 		|	List [] -> None
 		| List [v] -> Some (v, Empty)
@@ -560,10 +491,15 @@ end
 					None -> None
 				| Some (v, t') -> Some (v, BT t')
 		end
+		(* | BTM t -> begin 
+		    match (TreeMapEnumerator.next t) with
+		      None -> None
+		    | Some (kv, t') -> Some (kv, BTM t')
+		end *)
 		| BTMKey t -> begin 
 				match (TreeMapKeyEnumerator.next t) with
 					None -> None
-				| Some (v, t') -> Some (v, BTMKey t')
+				| Some (k, t') -> Some (k, BTMKey t')
 		end
 		| BTMValue t -> begin 
 				match (TreeMapValueEnumerator.next t) with
@@ -634,7 +570,6 @@ end
 					None -> None
 				| Some (v, m') -> Some (v, Memo m')
 		end
-	end
 	
 	let rec fold f e r = begin 
 		match e with
@@ -642,6 +577,7 @@ end
 		| List l -> List.fold_left (fun r' e' -> f e' r') r l
 		| Gen g -> Generator.fold f g r
 		| BT t -> TreeEnumerator.fold f t r
+		(* | BTM t -> TreeMapEnumerator.fold f t r *)
 		| BTMKey t -> TreeMapKeyEnumerator.fold f t r
 		| BTMValue t -> TreeMapValueEnumerator.fold f t r
 		| Once o -> begin 
@@ -668,6 +604,7 @@ end
 			Empty -> ()
 		|	List l -> List.iter f l
 		| BT t -> TreeEnumerator.iter f t
+		(* | BTM t -> TreeMapEnumerator.iter f t *)
 		| BTMKey t -> TreeMapKeyEnumerator.iter f t
 		| BTMValue t -> TreeMapValueEnumerator.iter f t
 		| Gen g -> Generator.iter f g
@@ -798,45 +735,23 @@ and Mapper : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type ('a, 'b) mapper = {
-		func : 'a -> 'b ;
-		enum : 'a Enum.t
-	}
-	type ('a, 'r) applier = { f : 'b. ('b, 'a) mapper -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'b t = C : ('a -> 'b) * 'a Enum.t -> 'b t
 	
-	let make f e = begin 
-		{ apply = fun applier -> applier.f
-			{	func = f ;
-				enum = e
-			}
-		}
-	end
+	let make f e = C (f, e)
 
-	let next_mapper m = begin 
-		match Enum.next m.enum with
-			None -> None
-		| Some (v, e') -> Some (
-			m.func v, 
-			{ apply = fun applier -> applier.f {
-					func = m.func ;
-					enum = e'
-				}
-			}
-		)
+	let next (C (f, e)) = begin 
+	  match Enum.next e with
+	    None -> None
+	  | Some (r, e') -> Some (f r, C (f, e'))
 	end
-	let nexter = { f = next_mapper }
-	let next t = t.apply nexter
 	
-	let fold_mapper f m r = begin 
-		Enum.fold (fun elt r -> f (m.func elt) r) m.enum r
-	end
-	let fold f t r = t.apply { f = fun m -> fold_mapper f m r}
+	let fold f (C (m, e)) = begin 
+	  Enum.fold (fun a b -> f (m a) b) e
+  end
 
-	let iter_mapper f m = begin 
-		Enum.iter (fun elt -> f (m.func elt)) m.enum
-	end
-	let iter f t = t.apply { f = fun m -> iter_mapper f m}
+	let iter f (C (m, e)) = begin 
+	  Enum.iter (fun a -> f (m a)) e
+  end
 end
 
 and MapperAux : sig 
@@ -1344,6 +1259,8 @@ end ;;
 let ( => ) a b = expand b a ;;
 let ( =? ) a b = filter b a ;;
 let ( =! ) a b = map b a ;;
+let ( -- ) a b = range a b ;; 
+
 
 to_list (( 1 -- 10 ) => (range 1)) ;;
 
@@ -1391,4 +1308,27 @@ chrono (fun () -> to_list (trim 10000 prime')) ;;
 	) (range 2 104729))) ;;
 (* On peut améliorer next//filter *)
 
+*)
+
+(*
+let crapou n e = begin 
+  let rec aux e = begin 
+    match next e with
+      None -> true
+    | Some (p, e') -> if p*p > n then true else if n mod p = 0 then false else aux e'
+  end in
+  aux e
+end ;;
+
+let ints_2 = from_generator (fun n -> Some (n + 1, n)) 2 ;;
+
+let rec p_prime () = memo (cons 2 (from_once (fun () -> aux 3)))
+and aux n = begin
+  if crapou n (p_prime ()) 
+  then Some (n, from_once (fun () -> aux (n+1)))
+  else aux (n + 1)
+end
+and prime = p_prime () ;;
+
+let rec prime = memo (ints_2 =? (fun n -> crapou n prime))
 *)

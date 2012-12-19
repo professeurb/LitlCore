@@ -13,10 +13,10 @@ val from_list : 'a list -> 'a enum
 val from_generator : ('a -> ('a * 'b) option) -> 'a -> 'b enum
 val from_unit_generator : (unit -> 'a option) -> 'a enum
 val from_object : 'a enumerator -> 'a enum
-val from_binary_tree : 'a LitlBinaryTree.t -> 'a enum
-val from_binary_tree_map : ('a, 'b) LitlBinaryTreeMap.t -> ('a * 'b) enum
-val from_binary_tree_map_keys : ('a, 'b) LitlBinaryTreeMap.t -> 'a enum
-val from_binary_tree_map_values : ('a, 'b) LitlBinaryTreeMap.t -> 'b enum
+val from_binary_tree : ('a, 'b) LitlBinaryTree.t -> 'a enum
+val from_binary_tree_map : ('a, 'b, 'c) LitlBinaryTreeMap.t -> ('a * 'b) enum
+val from_binary_tree_map_keys : ('a, 'b, 'c) LitlBinaryTreeMap.t -> 'a enum
+val from_binary_tree_map_values : ('a, 'b, 'c) LitlBinaryTreeMap.t -> 'b enum
 val from_stream : 'a Stream.t -> 'a enum
 val from_once : (unit -> ('a * 'a enum) option) -> 'a enum
 val cons : 'a -> 'a enum -> 'a enum

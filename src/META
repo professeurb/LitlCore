@@ -1,0 +1,12 @@
+# OASIS_START
+# DO NOT EDIT (digest: 9f357e1b633f5787b45d01629ba211ee)
+version = "0.1"
+description =
+"A general rather low-level but versatile enumeration data structure."
+archive(byte) = "litlCore.cma"
+archive(byte, plugin) = "litlCore.cma"
+archive(native) = "litlCore.cmxa"
+archive(native, plugin) = "litlCore.cmxs"
+exists_if = "litlCore.cma"
+# OASIS_STOP
+
