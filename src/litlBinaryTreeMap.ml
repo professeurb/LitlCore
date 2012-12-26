@@ -7,7 +7,8 @@
 *  Copyright (c) 2010 B.W.C. Computing. All rights reserved.
 *
 ************************************************************************)
-
+(* 'a is the key, 'b is the value, 
+  'c is some tree-structuring information. *)
 type ('a, 'b, 'c) t =
 	Empty
 | Node of ('a, 'b, 'c) t * 'a * 'b * ('a, 'b, 'c) t * 'c

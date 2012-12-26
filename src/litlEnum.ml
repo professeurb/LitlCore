@@ -326,7 +326,6 @@ end
 	end
 end
 
-
 module Generator : sig 
 	type 'a t
 	val make : ('a -> ('a * 'b) option) -> 'a -> 'b t
@@ -430,7 +429,7 @@ end
 
 	let from_binary_tree t = BT (TreeEnumerator.make t)
 
-	let from_binary_tree_map m = begin 
+ 	let from_binary_tree_map m = begin 
 		let obj = object 
 			val em = TreeMapEnumerator.make m
 
@@ -444,7 +443,8 @@ end
 				TreeMapEnumerator.iter f em
 			end
 
-			method fold : 'c. (('a * 'b) -> 'c -> 'c) -> 'c -> 'c = fun f a -> begin 
+			method fold : 'c . (('a * 'b) -> 'c -> 'c) -> 'c -> 'c =
+			fun f a -> begin 
 				TreeMapEnumerator.fold f em a
 			end
 
@@ -460,7 +460,9 @@ end
 		end in
 		Obj (obj : ('a * 'b) enumerator)
 	end
-	(* let from_binary_tree_map t = BTM (TreeMapEnumerator.make t) *)
+(* 	let from_binary_tree_map t = begin
+		BTM (TreeMapEnumerator.make t)
+	end *)
 
 	let from_binary_tree_map_keys m = begin 
 		BTMKey (TreeMapKeyEnumerator.make m)
@@ -481,7 +483,7 @@ end
 	  | _ -> Concat (List [elt], LitlDeque.cons enum LitlDeque.empty)
   end
 
-	let rec next = function 
+	let rec next (* : 'a . 'a t -> ('a * 'a t) option *) = function 
 			Empty -> None
 		|	List [] -> None
 		| List [v] -> Some (v, Empty)
@@ -491,7 +493,7 @@ end
 					None -> None
 				| Some (v, t') -> Some (v, BT t')
 		end
-		(* | BTM t -> begin 
+(* 		| BTM t -> begin 
 		    match (TreeMapEnumerator.next t) with
 		      None -> None
 		    | Some (kv, t') -> Some (kv, BTM t')
@@ -577,7 +579,7 @@ end
 		| List l -> List.fold_left (fun r' e' -> f e' r') r l
 		| Gen g -> Generator.fold f g r
 		| BT t -> TreeEnumerator.fold f t r
-		(* | BTM t -> TreeMapEnumerator.fold f t r *)
+(* 		| BTM t -> TreeMapEnumerator.fold f t r *)
 		| BTMKey t -> TreeMapKeyEnumerator.fold f t r
 		| BTMValue t -> TreeMapValueEnumerator.fold f t r
 		| Once o -> begin 
@@ -604,7 +606,7 @@ end
 			Empty -> ()
 		|	List l -> List.iter f l
 		| BT t -> TreeEnumerator.iter f t
-		(* | BTM t -> TreeMapEnumerator.iter f t *)
+(* 		| BTM t -> TreeMapEnumerator.iter f t *)
 		| BTMKey t -> TreeMapKeyEnumerator.iter f t
 		| BTMValue t -> TreeMapValueEnumerator.iter f t
 		| Gen g -> Generator.iter f g
@@ -706,7 +708,8 @@ end
 		| List _ -> e
 		| BT _ -> e
 		| Memo _ -> e
-		| Obj o -> if o#memoized then e else Memo (Memo.make e)
+		| Obj o when o#memoized -> e
+		(* | Obj o -> if o#memoized then e else Memo (Memo.make e) *)
 		|	_ -> Memo (Memo.make e)
 	end
 
@@ -721,10 +724,13 @@ end
 	end
 	
   let from_stream stream = begin 
-    from_unit_generator (
-	    fun () -> try Some (Stream.next stream) with Stream.Failure -> None
-	  )
-  end
+  	let unit_generator () = begin
+  		try 
+    		Some (Stream.next stream)
+    	with Stream.Failure -> None
+    end in
+    from_unit_generator unit_generator
+	end   
 end
 
 and Mapper : sig 
