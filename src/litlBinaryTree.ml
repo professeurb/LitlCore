@@ -12,13 +12,13 @@ type ('a, 'b) t = Empty | Node of ('a, 'b) t * 'a * ('a, 'b) t * 'b
 
 let rec fold f t res = begin 
 	match t with
-		Empty -> res
+	|	Empty -> res
 	| Node (l, v, r, _) -> fold f r (f v (fold f l res))
 end
 
 let rec iter f t = begin 
 	match t with
-		Empty -> ()
+	|	Empty -> ()
 	| Node (l, v, r, _) -> begin 
 			iter f l ;
 			f v ;
@@ -28,22 +28,22 @@ end
 
 let choose t = begin 
 	match t with
-		Empty -> raise Not_found
+	|	Empty -> raise Not_found
 	| Node (_, v, _, _) -> v
 end
 
 let leftmost t = begin 
 	let rec aux l v = begin 
 	  match l with
-	    Empty -> v
+	  | Empty -> v
 	  | Node (l', v', _, _) -> aux l' v'
 	end in
 	match t with
-	  Empty -> raise Not_found
+	| Empty -> raise Not_found
 	| Node (l, v, _, _) -> aux l v
 end
 
-let rightmost t = begin 
+let rightmost t = begin
 	let rec aux v r = begin 
 	  match r with
 	    Empty -> v

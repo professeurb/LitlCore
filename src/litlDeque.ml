@@ -130,6 +130,7 @@ let rec cons_left : 'a . 'a -> 'a t -> 'a t = begin
         Deep (Digit.Four (a, b, c, d), m, sf)
 end
 let cons = cons_left
+let (>:>) = cons_left
 
 let rec cons_right : 'a . 'a t -> 'a -> 'a t = begin 
   fun ft a -> 
@@ -143,6 +144,7 @@ let rec cons_right : 'a . 'a t -> 'a -> 'a t = begin
 	  | Deep (pr, m, Digit.Three (d, c, b)) ->
         Deep (pr, m, Digit.Four (d, c, b, a))
 end
+let (<:<) = cons_right
 
 let from_list s = List.fold_right cons_left s Empty ;;
 let to_list s = fold_right List.cons s [] ;;

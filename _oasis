@@ -1,12 +1,15 @@
-OASISFormat: 0.2
+OASISFormat: 0.4
+Plugins: META (0.4), DevFiles (0.4)
+
 Name:        litlCore
 Version:     0.1
 Synopsis:    A general rather low-level but versatile enumeration data structure.
 Authors:     Olivier Brunet
 License:     LGPL-2.1 with OCaml linking exception
-Plugins:     META (0.2)
 
 Library "litlCore"
+  FindLibName: litlcore
   Path:       src
   BuildTools: ocamlbuild
   Modules:    LitlBinaryTree, LitlBinaryTreeMap, LitlEnum, LitlDeque, LitlFingerTree
+  XMETADescription: A general rather low-level but versatile enumeration data structure.

@@ -54,11 +54,11 @@ end
 	let iter f (C (t, z)) = begin 
 		let rec aux z = begin 
 			match z with
-				End -> ()
+			| End -> ()
 			| More (v, t, z') -> begin 
-					f v ;
-					BT.iter f t ;
-					aux z'
+				f v ;
+				BT.iter f t ;
+				aux z'
 			end
 		end in
 		BT.iter f t ;
@@ -100,21 +100,24 @@ end
 end
 
 module TreeMapEnumerator : sig 
-	type ('a, 'b) t
+	type 'a t
 	
-	val make : ('a, 'b, 'c) BTM.t -> ('a, 'b) t
-	val next : ('a, 'b) t -> (('a * 'b) * ('a, 'b) t) option
-	val iter : ('a * 'b -> unit) -> ('a, 'b) t -> unit
-	val fold : ('a * 'b -> 'c -> 'c) -> ('a, 'b) t -> 'c -> 'c
+	val make : ('a, 'b, 'c) BTM.t -> ('a * 'b) t
+	val next : ('a * 'b) t -> (('a * 'b) * ('a * 'b) t) option
+	val iter : ('a * 'b -> unit) -> ('a * 'b) t -> unit
+	val fold : ('a * 'b -> 'c -> 'c) -> ('a * 'b) t -> 'c -> 'c
 	val skip_until :
-		('a * 'b -> bool) -> ('a, 'b) t -> (('a * 'b) * ('a, 'b) t) option
+		('a * 'b -> bool) -> ('a * 'b) t -> (('a * 'b) * ('a * 'b) t) option
 end
 = struct 
-	type ('a, 'b, 'c) zipper = End | More of
+	type ('a, 'b, 'c) zipper =
+	| End
+	| More of
 			('a * 'b) *
-			('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper
+			('a, 'b, 'c) BTM.t *
+			('a, 'b, 'c) zipper
 
-	type ('a, 'b) t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> ('a, 'b) t
+	type _ t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> ('a * 'b) t
 
 	let make t = begin 
 		C (t, End)
@@ -186,11 +189,14 @@ module TreeMapKeyEnumerator : sig
 		('a -> bool) -> 'a t -> ('a * 'a t) option
 end
 = struct 
-	type ('a, 'b, 'c) zipper = End | More of
+	type ('a, 'b, 'c) zipper =
+	| End
+	| More of
 			'a *
-			('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper
+			('a, 'b, 'c) BTM.t *
+			('a, 'b, 'c) zipper
 
-	type 'a t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> 'a t
+	type _ t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> 'a t
 
 	let make t = begin 
 		C (t, End)
@@ -198,7 +204,7 @@ end
 
 	let rec next (C (t, z)) = begin 
 		match (t, z) with
-			(BTM.Empty, End) -> None
+		| (BTM.Empty, End) -> None
 		| (BTM.Empty, More (k, bt, z)) -> Some (k, C (bt, z))
 		| (BTM.Node (BTM.Empty, k, _, r, _), z) -> Some (k, C (r, z))
 		| (BTM.Node (l, k, _, r, _), z) -> next (C (l, More (k, r, z)))
@@ -207,7 +213,7 @@ end
 	let iter f (C (bt, z)) = begin 
 		let rec aux z = begin 
 			match z with
-				End -> ()
+			|	End -> ()
 			| More (k, bt', z') -> begin 
 					f k ;
 					BTM.iter_keys f bt' ;
@@ -262,10 +268,14 @@ module TreeMapValueEnumerator : sig
 		('a -> bool) -> 'a t -> ('a * 'a t) option
 end
 = struct 
-	type ('a, 'b, 'c) zipper =  End
-	| More of 'b * ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper
+	type ('a, 'b, 'c) zipper = 
+	| End
+	| More of 
+			'b *
+			('a, 'b, 'c) BTM.t *
+			('a, 'b, 'c) zipper
 
-	type 'b t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> 'b t
+	type _ t = C : ('a, 'b, 'c) BTM.t * ('a, 'b, 'c) zipper -> 'b t
 
 	let make t = begin 
 		C (t, End)
@@ -334,7 +344,7 @@ module Generator : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type 'a t = C : ('a -> ('a * 'b) option) * 'a -> 'b t 
+	type _ t = C : ('a -> ('a * 'b) option) * 'a -> 'b t 
 
 	let make f s = begin 
 		C (f, s)
@@ -399,25 +409,25 @@ module rec Enum : sig
 	val memo : 'a t -> 'a t
 end
 = struct 
-	type 'a t = |
-		Empty
-	| List of 'a list
-	| BT of 'a TreeEnumerator.t
-	(* | BTM : ('a, 'b) TreeMapEnumerator.t -> ('a * 'b) t *)
-	| BTMKey of 'a TreeMapKeyEnumerator.t
-	| BTMValue of 'a TreeMapValueEnumerator.t
-	| Once of (unit -> ('a * 'a t) option)
-	| Gen of 'a Generator.t 
-	| Obj of 'a enumerator
-	| Memo of 'a Memo.t
-	| Map of 'a Mapper.t
-	| Map_with_aux of 'a MapperAux.t
-	| MapOpt of 'a MapperOpt.t
-	| MapOptAux of 'a MapperOptAux.t
-	| Filter of ('a -> bool) * 'a t
-	| Concat of 'a t * 'a t LitlDeque.t
-	| Expand of 'a Expander.t
-	| Expand_with_aux of 'a ExpanderAux.t
+	type _ t =
+	|	Empty : 'a t
+	| List : 'a list -> 'a t
+	| BT : 'a TreeEnumerator.t -> 'a t
+	(* | BTM : ('a * 'b) TreeMapEnumerator.t -> ('a * 'b) t *)
+	| BTMKey : 'a TreeMapKeyEnumerator.t -> 'a t
+	| BTMValue : 'a TreeMapValueEnumerator.t -> 'a t
+	| Once : (unit -> ('a * 'a t) option) -> 'a t
+	| Gen : 'a Generator.t -> 'a t
+	| Obj : 'a enumerator -> 'a t
+	| Memo : 'a Memo.t -> 'a t
+	| Map : 'a Mapper.t -> 'a t
+	| Map_with_aux : 'a MapperAux.t -> 'a t
+	| MapOpt : 'a MapperOpt.t -> 'a t
+	| MapOptAux : 'a MapperOptAux.t -> 'a t
+	| Filter : ('a -> bool) * 'a t -> 'a t
+	| Concat : 'a t * 'a t LitlDeque.t -> 'a t
+	| Expand : 'a Expander.t -> 'a t
+	| Expand_with_aux : 'a ExpanderAux.t -> 'a t
 		
 	let empty = Empty
 
@@ -474,7 +484,7 @@ end
 
 	let from_once o = Once o
 
-	let cons elt enum = begin 
+	let cons elt enum = begin
 	  match enum with
 	    List l -> List (elt :: l)
 	  | Concat (List l, enum_list) -> Concat (List (elt :: l), enum_list)
@@ -483,14 +493,16 @@ end
 	  | _ -> Concat (List [elt], LitlDeque.cons enum LitlDeque.empty)
   end
 
-	let rec next (* : 'a . 'a t -> ('a * 'a t) option *) = function 
-			Empty -> None
+	let rec next : type a. a t -> (a * a t) option = 
+	fun enum -> begin
+		match enum with 
+		|	Empty -> None
 		|	List [] -> None
 		| List [v] -> Some (v, Empty)
 		| List (v :: l) -> Some (v, List l)
 		| BT t -> begin 
-				match (TreeEnumerator.next t) with
-					None -> None
+			match (TreeEnumerator.next t) with
+				| None -> None
 				| Some (v, t') -> Some (v, BT t')
 		end
 (* 		| BTM t -> begin 
@@ -572,7 +584,8 @@ end
 					None -> None
 				| Some (v, m') -> Some (v, Memo m')
 		end
-	
+	end
+
 	let rec fold f e r = begin 
 		match e with
 			Empty -> r
@@ -685,15 +698,15 @@ end
 
 	let concat e1 e2 = begin 
 		match e1 with
-			Concat (e1', el1) -> begin 
+		|	Concat (e1', el1) -> begin 
 				match e2 with
-					Concat (e2', el2) ->
+				| Concat (e2', el2) ->
 						Concat (e1', LitlDeque.concat el1 (LitlDeque.cons e2' el2))
 				| _ -> Concat (e1', LitlDeque.cons_right el1 e2)
 			end
 		| _ -> begin 
 			match e2 with
-				Concat (e2', el2) -> Concat (e1, LitlDeque.cons e2' el2)
+			|	Concat (e2', el2) -> Concat (e1, LitlDeque.cons e2' el2)
 			| _ -> Concat (e1, LitlDeque.cons e2 LitlDeque.empty)
 		end
 	end
@@ -704,7 +717,7 @@ end
 	
 	let memo e = begin 
 		match e with
-			Empty -> e
+		| Empty -> e
 		| List _ -> e
 		| BT _ -> e
 		| Memo _ -> e
@@ -714,22 +727,21 @@ end
 	end
 
   let from_unit_generator f = begin 
-    let rec g_enum = Once (begin 
-      fun () -> match f () with
+    let rec enumerator = Once (
+    	fun () -> match f () with
          None -> None
-       | Some elt -> Some (elt, g_enum)
-	  end
+       | Some elt -> Some (elt, enumerator)
 	  ) in
-	  memo g_enum
+	  memo enumerator
 	end
 	
   let from_stream stream = begin 
-  	let unit_generator () = begin
+  	let stream_generator () = begin
   		try 
     		Some (Stream.next stream)
     	with Stream.Failure -> None
     end in
-    from_unit_generator unit_generator
+    from_unit_generator stream_generator
 	end   
 end
 
@@ -748,7 +760,7 @@ end
 	let next (C (f, e)) = begin 
 	  match Enum.next e with
 	    None -> None
-	  | Some (r, e') -> Some (f r, C (f, e'))
+	  | Some (v, e') -> Some (f v, C (f, e'))
 	end
 	
 	let fold f (C (m, e)) = begin 
@@ -769,77 +781,50 @@ and MapperAux : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type ('a, 'b, 'c) mapper = {
-		func : 'a -> 'c -> ('b * 'c) option ;
-		enum : 'a Enum.t ;
-		state : 'c
-	}
-	type ('a, 'r) applier = { f : 'b 'c. ('b, 'a, 'c) mapper -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'b t = C : ('a -> 'c -> ('b * 'c) option) * 'a Enum.t * 'c -> 'b t
 
 	exception Eject
 
-	let make f e s = begin 
-		{ apply = fun applier -> applier.f {
-				func = f ;
-				enum = e ;
-				state = s
-			}
-		}
-	end
+	let make f e s = C (f, e, s)
 	
-	let next_map m = begin 
-		match Enum.next m.enum with
+	let next (C (f, e, s)) = begin
+		match Enum.next e with
 			None -> None
-		| Some (v, e') -> begin 
-			match (m.func v m.state) with
+		| Some (v, e') -> begin
+			match f v s with
 				None -> None
-			| Some (v', s') -> Some (
-				v', 
-				{	apply = fun applier -> applier.f {
-						func = m.func;
-						enum = e';
-						state = s'
-					}
-				}
-			)
+			| Some (r, s') -> Some (r, C (f, e', s'))
 		end
 	end
-	let nexter = { f = next_map }
-	let next t = t.apply nexter
-	
-	let fold_mapper f m r = begin 
-		let res = ref r in
-		let ff elt state = begin 
-			match m.func elt state with
-				None -> raise Eject
-			| Some (elt', state') -> begin 
-					res := f elt' !res;
-					state'
+
+	let fold f (C (g, e, s)) r = begin
+		let rec aux e s r = begin
+			match Enum.next e with
+				None -> r
+			| Some (v, e') -> begin
+				match g v s with
+					None -> r
+				| Some (v', s') -> aux e' s' (f v' r)
 			end
 		end in
-		try
-			let _ = Enum.fold ff m.enum m.state
-			in !res
-		with Eject -> !res
+		aux  e s r
 	end
-	let fold f t r = t.apply { f = fun m -> fold_mapper f m r }
 
-	let iter_mapper f m = begin 
-		try
-			let _ = Enum.fold (
-				fun elt s ->
-					match m.func elt s with
-						None -> raise Eject
-					| Some (elt', s') -> begin 
-							f elt' ;
-							s'
-					end
-				) m.enum m.state in
-				()
-		with Eject -> ()
+	let iter f (C (g, e, s)) = begin
+		let rec aux e s = begin
+			match Enum.next e with
+				None -> ()
+			| Some (v, e') -> begin
+				match g v s with
+					None -> ()
+				| Some (v', s') -> begin
+					f v' ;
+					aux e' s'
+				end
+			end
+		end in
+		aux  e s
 	end
-	let iter f t = t.apply { f = fun g -> iter_mapper f g }	
 end
 
 and MapperOpt : sig 
@@ -850,79 +835,53 @@ and MapperOpt : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type ('a, 'b) mapper = {
-		func : 'a -> 'b option ;
-		enum : 'a Enum.t
-	}
-	type ('a, 'r) applier = { f : 'b. ('b, 'a) mapper -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'b t = C : ('a -> 'b option) * 'a Enum.t -> 'b t
 	
-	let make f e = begin 
-		{ apply = fun applier -> applier.f
-			{	func = f ;
-				enum = e
-			}
-		}
+	let make f e = begin
+		C (f, e)
 	end
 
-	let next_mapper m = begin 
+	let next (C (f, e)) = begin
 		let rec aux e = begin
 			match Enum.next e with
 				None -> None
 			| Some (v, e') -> begin
-				  match m.func v with
-						None -> aux e'
-					| Some v' -> Some (
-							v', {
-								apply = fun applier -> applier.f {
-									func = m.func ;
-									enum = e'
-								}
-							}
-						)
+				match f v with
+					None -> aux e'
+				| Some v' -> Some (v', C (f, e'))
+			end			
+		end in
+		aux e
+	end	
+
+	let fold f (C (g, e)) r = begin
+		let rec aux e r = begin
+			match Enum.next e with
+				None -> r
+			| Some (v, e') -> begin
+				match g v with
+					None -> aux e' r
+				| Some v' -> aux e' (f v' r)
 			end
 		end in
-		aux m.enum
+		aux e r
 	end
-		(* match Enum.next m.enum with
-			None -> None
-		| Some (v, e') -> begin 
-				match m.func v with
-					None -> ...
-					Some v' -> Some (
-						v', 
-						{ apply = fun applier -> applier.f {
-								func = m.func ;
-								enum = e'
-							}
-						}	
-					)
-		end
-	end *)
-	let nexter = { f = next_mapper }
-	let next t = t.apply nexter
-	
-	let fold_mapper f m r = begin 
-		Enum.fold (
-			fun elt r -> begin 
-				match m.func elt with
-					None -> r
-				| Some elt' -> f elt' r
-			end
-		) m.enum r
-	end
-	let fold f t r = t.apply { f = fun m -> fold_mapper f m r}
 
-	let iter_mapper f m = begin 
-		Enum.iter (
-			fun elt -> begin 
-				match m.func elt with
-					None -> ()
-				| Some elt' -> f elt'
+	let iter f (C (g, e)) = begin
+		let rec aux e = begin
+			match Enum.next e with
+				None -> ()
+			| Some (v, e') -> begin
+				match g v with
+					None -> aux e'
+				| Some v' -> begin
+					f v' ;
+					aux e'
+				end
 			end
-		) m.enum
+		end in
+		aux e
 	end
-	let iter f t = t.apply { f = fun m -> iter_mapper f m}
 end
 
 and MapperOptAux : sig 
@@ -934,83 +893,58 @@ and MapperOptAux : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type ('a, 'b, 'c) mapper = {
-		func : 'a -> 'c -> ('b option * 'c) option ;
-		enum : 'a Enum.t ;
-		state : 'c
-	}
-	type ('a, 'r) applier = { f : 'b 'c. ('b, 'a, 'c) mapper -> 'r }
-	type 'a t = { apply : 'r. ('a, 'r) applier -> 'r }
+	type 'b t = C : ('a -> 'c -> ('b option * 'c) option) * 'a Enum.t * 'c -> 'b t
 
 	exception Eject
 
 	let make f e s = begin 
-		{ apply = fun applier -> applier.f {
-				func = f ;
-				enum = e ;
-				state = s
-			}
-		}
+		C (f, e, s)
 	end
-	
-	let next_map m = begin 
-		let rec aux e s = begin 
-			match Enum.next e with
-				None -> None
-			| Some (v, e') -> begin 
-				match (m.func v s) with
-					None -> None
-				| Some (None, s') -> aux e' s'
-				| Some (Some v', s') -> Some (
-					v', { 
-						apply = fun applier -> applier.f {
-							func = m.func;
-							enum = e';
-							state = s'
-						}
-					}
-				)
-			end
-		end in
-		aux m.enum m.state
-	end
-	let nexter = { f = next_map }
-	let next t = t.apply nexter
-	
-	let fold_mapper f m r = begin 
-		let res = ref r in
-		let ff elt state = begin 
-			match m.func elt state with
-				None -> raise Eject
-			| Some (None, state') -> state'
-			| Some (Some elt', state') -> begin 
-					res := f elt' !res;
-					state'
-			end
-		end in
-		try
-			let _ = Enum.fold ff m.enum m.state
-			in !res
-		with Eject -> !res
-	end
-	let fold f t r = t.apply { f = fun m -> fold_mapper f m r }
 
-	let iter_mapper f m = begin 
-		try
-			let _ = Enum.fold (
-				fun elt s ->
-					match m.func elt s with
-						None -> raise Eject
-					| Some (None, s') -> s'
-					| Some (Some elt', s') -> begin 
-							f elt' ;
-							s'
-					end
-				) m.enum m.state in
-				()
-		with Eject -> ()
+	let next (C (f, e, s)) = begin
+		let rec aux e s = begin
+			match Enum.next e with
+			| None -> None
+			| Some (v, e') -> begin
+				match f v s with
+				| None -> None
+				| Some (None, s') -> aux e' s'
+				| Some (Some v', s') -> Some (v', C (f, e', s'))
+			end
+		end in
+		aux e s
 	end
-	let iter f t = t.apply { f = fun g -> iter_mapper f g }	
+	
+	let fold f (C (g, e, s)) r = begin
+		let rec aux e s r = begin
+			match Enum.next e with
+			| None -> r
+			| Some (v, e') -> begin
+				match g v s with
+				| None -> r
+				| Some (None, s') -> aux e' s' r
+				| Some (Some v', s') -> aux e' s' (f v' r)
+			end
+		end in
+		aux e s r
+	end
+
+	let iter f (C (g, e, s)) = begin
+		let rec aux e s = begin
+			match Enum.next e with
+			| None -> ()
+			| Some (v, e') -> begin
+				match g v s with
+				| None -> ()
+				| Some (None, s') -> aux e' s'
+				| Some (Some v', s') -> begin
+					f v' ;
+					aux e' s'
+				end
+			end
+		end in
+		aux e s
+	end
 end
 
 and Expander : sig 
@@ -1179,25 +1113,25 @@ and Memo : sig
 	val iter : ('a -> unit) -> 'a t -> unit
 end
 = struct 
-	type 'a t = ('a cell) ref
-	and 'a cell = C_Empty | C_Enum of 'a Enum.t | C_Value of 'a * 'a t
+	type 'a t = 'a cell ref
+	and 'a cell = Empty | Enum of 'a Enum.t | Value of 'a * 'a t
 	
-	let make e = ref (C_Enum e)
+	let make e = ref (Enum e)
 	
 	let next m = begin 
 		match !m with
-			C_Empty -> None
-		| C_Value (v, m') -> Some (v, m')
-		| C_Enum e -> begin 
+			Empty -> None
+		| Value (v, m') -> Some (v, m')
+		| Enum e -> begin 
 				match Enum.next e with
 					None -> begin 
-						m := C_Empty ;
+						m := Empty ;
 						None
 					end
 				| Some (v, e') -> begin 
-						let m' = ref (C_Enum e') in
+						let m' = ref (Enum e') in
 						begin 
-							m := C_Value (v, m') ;
+							m := Value (v, m') ;
 							Some (v, m')
 						end
 				end
@@ -1227,13 +1161,13 @@ type 'a enum = 'a t
 let range a b = begin 
 	if b > a
 	then
-		from_generator (fun n -> if n > b then None else Some (n+1, n)) a
+		from_generator (fun n -> if n > b then None else Some (n + 1, n)) a
 	else
-		from_generator (fun n -> if n < b then None else Some (n-1, n)) a
+		from_generator (fun n -> if n < b then None else Some (n - 1, n)) a
 end
 
 let counter = begin 
-	from_generator (fun n -> Some (n+1, n)) 0
+	from_generator (fun n -> Some (n + 1, n)) 0
 end
 
 let trim n e = begin 
@@ -1262,6 +1196,8 @@ let to_list e = begin
 end ;;
 
 (* 
+(* for expand (or, actually, bind),
+	the notation ( >>= ) seems in order *)
 let ( => ) a b = expand b a ;;
 let ( =? ) a b = filter b a ;;
 let ( =! ) a b = map b a ;;
@@ -1336,5 +1272,5 @@ and aux n = begin
 end
 and prime = p_prime () ;;
 
-let rec prime = memo (ints_2 =? (fun n -> crapou n prime))
+let rec prime () = memo (ints_2 =? (fun n -> crapou n (prime ())))) ;;
 *)

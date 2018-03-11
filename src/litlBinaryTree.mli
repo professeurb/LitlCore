@@ -9,6 +9,7 @@
 (* Basically, 'a is used to store data, 
   'b is used to add internal information such as
   a height or a color *)
+
 type ('a, 'b) t = Empty | Node of ('a, 'b) t * 'a * ('a, 'b) t * 'b
 
 val fold : ('a -> 'b -> 'b) -> ('a, 'c) t -> 'b -> 'b
