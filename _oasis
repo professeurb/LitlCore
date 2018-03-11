@@ -11,5 +11,5 @@ Library "litlCore"
   FindLibName: litlcore
   Path:       src
   BuildTools: ocamlbuild
-  Modules:    LitlBinaryTree, LitlBinaryTreeMap, LitlEnum, LitlDeque, LitlFingerTree
+  Modules:    LitlBinaryTree, LitlBinaryTreeMap, LitlEnum, LitlDeque
   XMETADescription: A general rather low-level but versatile enumeration data structure.
